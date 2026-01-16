@@ -1,0 +1,5 @@
+{
+  "name": "Novo PROFBIO GV - Diretório Docente",
+  "description": "Um diretório mobile-first para listar os docentes do PROFBIO da UFJF, campus Governador Valadares. Permite a visualização pública dos perfis e uma área privada para que os docentes editem suas informações.",
+  "requestFramePermissions": []
+}
