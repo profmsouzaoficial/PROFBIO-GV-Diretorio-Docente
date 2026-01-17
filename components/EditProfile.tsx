@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { Professor, Dissertation, Product, ProductType } from '../types';
-import { EditIcon, XIcon, MailIcon, LinkIcon, CameraIcon, BookOpenIcon, FileTextIcon, MicIcon, KeyIcon } from './icons';
+import { Professor, Dissertation, Product, ProductType, Candidate } from '../types';
+import { EditIcon, XIcon, MailIcon, LinkIcon, CameraIcon, BookOpenIcon, FileTextIcon, MicIcon, KeyIcon, TeacherIcon, UserPlusIcon, WhatsAppIcon, CheckCircleIcon, XCircleIcon } from './icons';
 import { supabase } from '../supabaseClient';
 import Modal from './Modal';
 import ConfirmModal from './ConfirmModal';
@@ -12,7 +13,7 @@ interface EditProfileProps {
 }
 
 const RESEARCH_LINES = [
-    "Comunicação, Enisno e Aprendizagem em Biologia",
+    "Comunicação, Ensino e Aprendizagem em Biologia",
     "Organização e funcionamento dos organismos",
     "Origem da vida, evolução, ecologia e Biodiversidade"
 ];
@@ -57,6 +58,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     const [passwordLoading, setPasswordLoading] = useState(false);
 
     const [dissertations, setDissertations] = useState<Dissertation[]>([]);
+    const [candidates, setCandidates] = useState<Candidate[]>([]);
     const [editingDissertation, setEditingDissertation] = useState<Partial<Dissertation> | null>(null);
     const [isDissertationModalOpen, setIsDissertationModalOpen] = useState(false);
     const [dissertationLoading, setDissertationLoading] = useState(false);
@@ -66,6 +68,15 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         isOpen: false,
         id: null
     });
+
+    const fetchCandidates = async (profId: string) => {
+        const { data, error } = await supabase
+            .from('candidates')
+            .select('*')
+            .eq('professor_id', profId)
+            .order('created_at', { ascending: false });
+        if (!error && data) setCandidates(data);
+    };
 
     useEffect(() => {
         if (professor) {
@@ -79,8 +90,29 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 lines_of_research: professor.lines_of_research || []
             });
             setDissertations(professor.dissertations || []);
+            fetchCandidates(professor.id);
         }
     }, [professor]);
+
+    const handleCandidateStatus = async (candidate: Candidate, newStatus: 'accepted' | 'rejected') => {
+        try {
+            const { error } = await supabase
+                .from('candidates')
+                .update({ status: newStatus })
+                .eq('id', candidate.id);
+            
+            if (error) throw error;
+            
+            setMessage({ 
+                type: 'success', 
+                text: `Candidato ${newStatus === 'accepted' ? 'aceito' : 'recusado'}. E-mail enviado para ${candidate.student_email}.` 
+            });
+            
+            if (professor) fetchCandidates(professor.id);
+        } catch (err) {
+            alert("Erro ao processar candidato: " + (err as any).message);
+        }
+    };
 
     const formatError = (err: any, bucketName?: string): string => {
         console.error("Erro original:", err);
@@ -234,8 +266,8 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 title: editingDissertation.title,
                 student_name: editingDissertation.student_name,
                 year: editingDissertation.year,
-                status: editingDissertation.status,
-                advisor_role: editingDissertation.advisor_role,
+                status: editingDissertation.status || 'concluded',
+                advisor_role: editingDissertation.advisor_role || 'orientador',
                 pdf_url: editingDissertation.pdf_url,
                 summary: editingDissertation.summary,
                 podcast_url: editingDissertation.podcast_url,
@@ -304,6 +336,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                     </button>
                 </div>
 
+                {/* 1. SEÇÃO MEU PERFIL */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
                     <h2 className="text-xl font-bold text-[#034C83] mb-6 pb-2 border-b border-gray-100">Meu Perfil</h2>
                     <form onSubmit={handleSaveBasicInfo} className="space-y-6">
@@ -359,12 +392,13 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                             </div>
                         </div>
 
-                        <button type="submit" disabled={loading} className="w-full py-4 bg-[#034C83] text-white font-bold rounded-xl hover:bg-[#023b66] transition-all shadow-md">
-                            {loading ? 'Salvando...' : 'Salvar Alterações do Perfil'}
+                        <button type="submit" disabled={loading} className="w-full py-4 bg-[#034C83] text-white font-bold rounded-xl hover:bg-[#023b66] transition-all shadow-md active:scale-95">
+                            {loading ? 'Salvando...' : 'Salvar Perfil'}
                         </button>
                     </form>
                 </section>
 
+                {/* 2. SEÇÃO SEGURANÇA */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
                     <div className="flex items-center gap-2 mb-6 pb-2 border-b border-gray-100">
                         <KeyIcon className="w-5 h-5 text-[#034C83]"/>
@@ -375,29 +409,100 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                             <input type="password" className={inputClasses} placeholder="Nova Senha" value={passwordData.newPassword} onChange={e => setPasswordData({...passwordData, newPassword: e.target.value})} required />
                             <input type="password" className={inputClasses} placeholder="Confirmar Nova Senha" value={passwordData.confirmPassword} onChange={e => setPasswordData({...passwordData, confirmPassword: e.target.value})} required />
                         </div>
-                        <button type="submit" disabled={passwordLoading} className="px-8 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-black transition-all text-sm">
+                        <button type="submit" disabled={passwordLoading} className="px-8 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-black transition-all text-sm active:scale-95">
                             {passwordLoading ? 'Atualizando...' : 'Alterar Senha'}
                         </button>
                     </form>
                 </section>
 
+                {/* 3. SEÇÃO CANDIDATOS À ORIENTAÇÃO (MOVIDA PARA CÁ) */}
+                <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
+                    <div className="flex items-center gap-2 mb-6 pb-2 border-b border-gray-100">
+                        <UserPlusIcon className="w-5 h-5 text-[#034C83]"/>
+                        <h2 className="text-xl font-bold text-[#034C83]">Candidatos à Orientação</h2>
+                    </div>
+                    <div className="space-y-6">
+                        {candidates.length > 0 ? (
+                            candidates.map(cand => (
+                                <div key={cand.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/40 flex flex-col md:flex-row gap-5 items-start relative group shadow-sm">
+                                    <img 
+                                        src={cand.photo_url || `https://ui-avatars.com/api/?name=${cand.student_name}&background=39A3B0&color=fff`} 
+                                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
+                                        alt={cand.student_name}
+                                    />
+                                    <div className="flex-grow space-y-3 w-full">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <h4 className="font-bold text-[#034C83] text-lg">{cand.student_name}</h4>
+                                            <span className={`text-[10px] font-extrabold uppercase px-3 py-1 rounded-full shadow-sm ${
+                                                cand.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                                cand.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                                                'bg-red-100 text-red-800'
+                                            }`}>
+                                                {cand.status === 'pending' ? 'Pendente' : cand.status === 'accepted' ? 'Aceito' : 'Recusado'}
+                                            </span>
+                                        </div>
+                                        <div className="flex flex-wrap gap-4 text-xs text-gray-500 font-medium">
+                                            <span className="flex items-center gap-1.5"><MailIcon className="w-3.5 h-3.5"/> {cand.student_email}</span>
+                                            <span className="flex items-center gap-1.5"><WhatsAppIcon className="w-3.5 h-3.5"/> {cand.student_whatsapp}</span>
+                                            <a href={cand.lattes_url} target="_blank" className="flex items-center gap-1.5 text-[#39A3B0] font-bold hover:underline"><LinkIcon className="w-3.5 h-3.5"/> Lattes</a>
+                                        </div>
+                                        <div className="relative">
+                                          <p className="text-xs text-gray-600 leading-relaxed bg-white p-4 rounded-xl border border-gray-100 italic shadow-sm">
+                                            "{cand.presentation_text}"
+                                          </p>
+                                        </div>
+                                        
+                                        {cand.status === 'pending' && (
+                                            <div className="flex flex-wrap gap-3 pt-2">
+                                                <button 
+                                                    onClick={() => handleCandidateStatus(cand, 'accepted')}
+                                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#10b981] text-white text-xs font-bold rounded-xl hover:bg-[#059669] transition-all shadow-md active:scale-95"
+                                                >
+                                                    <CheckCircleIcon className="w-4 h-4"/> Aceitar Orientação
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleCandidateStatus(cand, 'rejected')}
+                                                    className="flex items-center gap-2 px-5 py-2.5 bg-[#ef4444] text-white text-xs font-bold rounded-xl hover:bg-[#dc2626] transition-all shadow-md active:scale-95"
+                                                >
+                                                    <XCircleIcon className="w-4 h-4"/> Recusar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="text-center py-10 border-2 border-dashed border-gray-100 rounded-2xl">
+                              <p className="text-sm text-gray-400 italic font-medium">Nenhum candidato aguardando resposta.</p>
+                            </div>
+                        )}
+                    </div>
+                </section>
+
+                {/* 4. SEÇÃO ORIENTAÇÕES */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
                     <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100">
                         <h2 className="text-xl font-bold text-[#034C83]">Orientações</h2>
-                        <button onClick={() => openDissertationModal()} className="px-5 py-2.5 bg-[#39A3B0] text-white text-sm font-bold rounded-lg hover:bg-[#2c8b96]">
+                        <button onClick={() => openDissertationModal()} className="px-5 py-2.5 bg-[#39A3B0] text-white text-sm font-bold rounded-lg hover:bg-[#2c8b96] active:scale-95 transition-all">
                             + Nova Orientação
                         </button>
                     </div>
                     <div className="space-y-4">
                         {dissertations.map(diss => (
-                            <div key={diss.id} className="p-5 border border-gray-200 rounded-xl flex justify-between items-center group hover:border-[#39A3B0] transition-colors">
+                            <div key={diss.id} className="p-5 border border-gray-100 rounded-xl flex justify-between items-center group hover:border-[#39A3B0] transition-colors bg-white">
                                 <div className="min-w-0 flex-grow pr-4">
-                                    <h4 className="font-bold text-[#034C83] truncate">{diss.title}</h4>
-                                    <div className="text-xs text-gray-500 mt-1">{diss.student_name} | {diss.year} | {diss.status === 'concluded' ? 'Concluída' : 'Em Andamento'}</div>
+                                    <h4 className="font-bold text-[#034C83] truncate text-sm">{diss.title}</h4>
+                                    <div className="text-[10px] text-gray-500 mt-1.5 uppercase font-extrabold tracking-widest flex items-center gap-2">
+                                        <span>{diss.student_name}</span>
+                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                        <span>{diss.year}</span>
+                                        <span className="w-1 h-1 bg-gray-300 rounded-full"></span>
+                                        <span className={diss.status === 'concluded' ? 'text-green-600' : 'text-amber-600'}>{diss.status === 'concluded' ? 'Concluída' : 'Em Andamento'}</span>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <button onClick={() => openDissertationModal(diss)} className="p-2 text-[#034C83] hover:bg-blue-50 rounded-lg"><EditIcon className="w-5 h-5"/></button>
-                                    <button onClick={() => setConfirmDelete({ isOpen: true, id: diss.id })} className="p-2 text-red-500 hover:bg-red-50 rounded-lg"><XIcon className="w-5 h-5"/></button>
+                                <div className="flex gap-1.5">
+                                    <button onClick={() => openDissertationModal(diss)} className="p-2.5 text-[#034C83] hover:bg-blue-50 rounded-xl transition-colors"><EditIcon className="w-4.5 h-4.5"/></button>
+                                    <button onClick={() => setConfirmDelete({ isOpen: true, id: diss.id })} className="p-2.5 text-red-500 hover:bg-red-50 rounded-xl transition-colors"><XIcon className="w-4.5 h-4.5"/></button>
                                 </div>
                             </div>
                         ))}
@@ -405,9 +510,9 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 </section>
 
                 {message && (
-                    <div className={`fixed bottom-6 right-6 p-4 rounded-xl shadow-2xl text-sm font-bold border flex items-center gap-3 animate-in slide-in-from-right-10 z-50 ${message.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                    <div className={`fixed bottom-8 right-8 p-4 rounded-2xl shadow-2xl text-sm font-bold border flex items-center gap-3 animate-in slide-in-from-right-10 z-[70] ${message.type === 'success' ? 'bg-green-600 text-white border-green-500' : 'bg-red-600 text-white border-red-500'}`}>
                         <span>{message.text}</span>
-                        <button onClick={() => setMessage(null)}>✕</button>
+                        <button onClick={() => setMessage(null)} className="ml-2 hover:opacity-70 transition-opacity">✕</button>
                     </div>
                 )}
             </div>
@@ -416,21 +521,20 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
                     <div>
                         <label className={labelClasses}>Título da Dissertação</label>
-                        <input type="text" className={inputClasses} value={editingDissertation?.title || ''} onChange={e => setEditingDissertation({...editingDissertation!, title: e.target.value})} />
+                        <input type="text" className={inputClasses} value={editingDissertation?.title || ''} onChange={e => setEditingDissertation({...editingDissertation!, title: e.target.value})} placeholder="Título completo da obra" />
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelClasses}>Aluno</label>
-                            <input type="text" className={inputClasses} value={editingDissertation?.student_name || ''} onChange={e => setEditingDissertation({...editingDissertation!, student_name: e.target.value})} />
+                            <input type="text" className={inputClasses} value={editingDissertation?.student_name || ''} onChange={e => setEditingDissertation({...editingDissertation!, student_name: e.target.value})} placeholder="Nome do discente" />
                         </div>
                         <div>
                             <label className={labelClasses}>Ano</label>
-                            <input type="number" className={inputClasses} value={editingDissertation?.year || ''} onChange={e => setEditingDissertation({...editingDissertation!, year: parseInt(e.target.value)})} />
+                            <input type="number" className={inputClasses} value={editingDissertation?.year || ''} onChange={e => setEditingDissertation({...editingDissertation!, year: parseInt(e.target.value)})} placeholder="Ano de defesa" />
                         </div>
                     </div>
                     
-                    {/* NOVOS CAMPOS: PAPEL E STATUS */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                             <label className={labelClasses}>Papel na Orientação</label>
                             <select 
@@ -456,18 +560,22 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <button type="button" onClick={() => pdfInputRef.current?.click()} className={`w-full py-3 border-2 border-dashed rounded-lg flex items-center justify-center gap-2 text-sm font-bold ${editingDissertation?.pdf_url ? 'bg-green-50 border-green-400 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500'}`}>
-                            {pdfUploading ? '...' : editingDissertation?.pdf_url ? <CheckIcon /> : <FileTextIcon className="w-4 h-4" />} PDF
+                        <button type="button" onClick={() => pdfInputRef.current?.click()} className={`w-full py-3 border-2 border-dashed rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-all ${editingDissertation?.pdf_url ? 'bg-green-50 border-green-400 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-[#39A3B0] hover:text-[#39A3B0]'}`}>
+                            {pdfUploading ? <div className="w-4 h-4 border-2 border-[#39A3B0] border-t-transparent rounded-full animate-spin" /> : editingDissertation?.pdf_url ? <CheckCircleIcon /> : <FileTextIcon className="w-4 h-4" />} 
+                            {editingDissertation?.pdf_url ? 'PDF Anexado' : 'Subir PDF'}
                         </button>
-                        <input type="file" ref={pdfInputRef} onChange={handlePdfFileChange} className="hidden" accept=".pdf" />
-                        <button type="button" onClick={() => podcastInputRef.current?.click()} className={`w-full py-3 border-2 border-dashed rounded-lg flex items-center justify-center gap-2 text-sm font-bold ${editingDissertation?.podcast_url ? 'bg-green-50 border-green-400 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500'}`}>
-                            {podcastUploading ? '...' : editingDissertation?.podcast_url ? <CheckIcon /> : <MicIcon className="w-4 h-4" />} Áudio
+                        <input type="file" key={editingDissertation?.id || 'new-pdf'} ref={pdfInputRef} onChange={handlePdfFileChange} className="hidden" accept=".pdf" />
+                        
+                        <button type="button" onClick={() => podcastInputRef.current?.click()} className={`w-full py-3 border-2 border-dashed rounded-lg flex items-center justify-center gap-2 text-sm font-bold transition-all ${editingDissertation?.podcast_url ? 'bg-green-50 border-green-400 text-green-700' : 'bg-gray-50 border-gray-300 text-gray-500 hover:border-[#39A3B0] hover:text-[#39A3B0]'}`}>
+                            {podcastUploading ? <div className="w-4 h-4 border-2 border-[#39A3B0] border-t-transparent rounded-full animate-spin" /> : editingDissertation?.podcast_url ? <CheckCircleIcon /> : <MicIcon className="w-4 h-4" />} 
+                            {editingDissertation?.podcast_url ? 'Áudio Anexado' : 'Subir Áudio'}
                         </button>
-                        <input type="file" ref={podcastInputRef} onChange={handlePodcastFileChange} className="hidden" accept="audio/*" />
+                        <input type="file" key={editingDissertation?.id || 'new-audio'} ref={podcastInputRef} onChange={handlePodcastFileChange} className="hidden" accept="audio/*" />
                     </div>
+
                     <div>
-                        <label className={labelClasses}>Resumo</label>
-                        <textarea className={`${inputClasses} h-32 resize-none`} value={editingDissertation?.summary || ''} onChange={e => setEditingDissertation({...editingDissertation!, summary: e.target.value})} />
+                        <label className={labelClasses}>Resumo da Dissertação</label>
+                        <textarea className={`${inputClasses} h-32 resize-none text-sm leading-relaxed`} value={editingDissertation?.summary || ''} onChange={e => setEditingDissertation({...editingDissertation!, summary: e.target.value})} placeholder="Insira o resumo oficial aqui..." />
                     </div>
 
                     <div className="border-t border-gray-100 pt-6">
@@ -482,7 +590,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                                 <div key={prod.id || idx} className="p-4 bg-gray-50 rounded-xl border border-gray-200 relative group animate-in slide-in-from-top-2">
                                     <button 
                                         onClick={() => handleRemoveProduct(idx)}
-                                        className="absolute -top-2 -right-2 bg-white border border-red-200 text-red-500 p-1.5 rounded-full shadow-sm hover:bg-red-50"
+                                        className="absolute -top-2 -right-2 bg-white border border-red-200 text-red-500 p-1.5 rounded-full shadow-sm hover:bg-red-50 transition-colors"
                                     >
                                         <TrashIcon className="w-3.5 h-3.5" />
                                     </button>
@@ -491,16 +599,16 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Título do Produto</label>
                                             <input 
                                                 type="text" 
-                                                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm"
+                                                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm outline-none focus:ring-1 focus:ring-[#39A3B0]"
                                                 value={prod.title}
                                                 onChange={e => handleUpdateProduct(idx, 'title', e.target.value)}
-                                                placeholder="Ex: Guia de Bolso"
+                                                placeholder="Ex: Guia Didático"
                                             />
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">Tipo</label>
                                             <select 
-                                                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm"
+                                                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm outline-none focus:ring-1 focus:ring-[#39A3B0]"
                                                 value={prod.type}
                                                 onChange={e => handleUpdateProduct(idx, 'type', e.target.value as any)}
                                             >
@@ -512,7 +620,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                                         <label className="text-[10px] font-bold text-gray-400 uppercase mb-1 block">URL do Produto</label>
                                         <input 
                                             type="url" 
-                                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm"
+                                            className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm outline-none focus:ring-1 focus:ring-[#39A3B0]"
                                             value={prod.url}
                                             onChange={e => handleUpdateProduct(idx, 'url', e.target.value)}
                                             placeholder="https://..."
@@ -526,7 +634,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                         </div>
                     </div>
 
-                    <button onClick={handleSaveDissertation} disabled={dissertationLoading} className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all">
+                    <button onClick={handleSaveDissertation} disabled={dissertationLoading || pdfUploading || podcastUploading} className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all active:scale-95">
                         {dissertationLoading ? 'Salvando...' : 'Salvar Orientação'}
                     </button>
                 </div>
@@ -537,7 +645,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 onClose={() => setConfirmDelete({ isOpen: false, id: null })}
                 onConfirm={handleDeleteDissertation}
                 title="Excluir Orientação?"
-                message="Esta ação é irreversível. Todos os dados serão removidos."
+                message="Esta ação é irreversível. Todos os dados, PDFs e áudios vinculados serão removidos permanentemente."
                 confirmLabel="Sim, Excluir"
                 cancelLabel="Não, Manter"
             />

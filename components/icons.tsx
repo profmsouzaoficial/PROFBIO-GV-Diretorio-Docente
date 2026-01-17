@@ -5,30 +5,22 @@ interface IconProps {
   className?: string;
 }
 
-export const OwlSVG: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+export const TeacherIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 24 24" 
     fill="none" 
     stroke="currentColor" 
-    strokeWidth="1.5" 
+    strokeWidth="1.8" 
     strokeLinecap="round" 
     strokeLinejoin="round" 
     className={className}
   >
-    {/* Chapéu de Formatura (Capelo) */}
-    <path d="M22 10L12 5L2 10L12 15L22 10Z" fill="currentColor" fillOpacity="0.1" />
+    <path d="M2 10L12 5L22 10L12 15L2 10Z" />
     <path d="M6 12V16C6 17.1 6.9 18 8 18H16C17.1 18 18 17.1 18 16V12" />
     <path d="M22 10V15" />
-    
-    {/* Rosto da Coruja */}
-    <circle cx="9" cy="13.5" r="2" />
-    <circle cx="15" cy="13.5" r="2" />
-    <path d="M12 14.5L11 16H13L12 14.5Z" fill="currentColor" />
-    
-    {/* Detalhes da lateral/orelhas sob o chapéu */}
-    <path d="M7 10.5C7 10.5 6 11 6 12" />
-    <path d="M17 10.5C17 10.5 18 11 18 12" />
+    <circle cx="12" cy="13" r="3" />
+    <path d="M18 21C18 19.3 15.3 18 12 18C8.7 18 6 19.3 6 21" />
   </svg>
 );
 
@@ -136,4 +128,34 @@ export const CameraIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
         <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
         <circle cx="12" cy="13" r="3" />
     </svg>
+);
+
+export const UserPlusIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <line x1="19" y1="8" x2="19" y2="14" />
+    <line x1="16" y1="11" x2="22" y2="11" />
+  </svg>
+);
+
+export const WhatsAppIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 1 1-7.6-14.7 8.38 8.38 0 0 1 3.8.9L21 3z" />
+  </svg>
+);
+
+export const CheckCircleIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+    <polyline points="22 4 12 14.01 9 11.01" />
+  </svg>
+);
+
+export const XCircleIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10" />
+    <line x1="15" y1="9" x2="9" y2="15" />
+    <line x1="9" y1="9" x2="15" y2="15" />
+  </svg>
 );

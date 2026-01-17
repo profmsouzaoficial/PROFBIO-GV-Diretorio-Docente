@@ -35,6 +35,19 @@ export interface Dissertation {
   products: Product[];
 }
 
+export interface Candidate {
+  id: string;
+  professor_id: string;
+  student_name: string;
+  student_email: string;
+  student_whatsapp: string;
+  lattes_url: string;
+  presentation_text: string;
+  photo_url?: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+}
+
 export interface Professor {
   id: string;
   user_id?: string;
@@ -46,6 +59,7 @@ export interface Professor {
   public_email: string;
   photo_url: string;
   dissertations: Dissertation[];
+  candidates?: Candidate[];
 }
 
 export type AuthSession = Session;

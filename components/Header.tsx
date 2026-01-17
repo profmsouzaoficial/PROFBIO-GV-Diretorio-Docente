@@ -1,6 +1,5 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { OwlSVG, MenuIcon, UserCircleIcon, EditIcon, LogOutIcon } from './icons';
+import { TeacherIcon, MenuIcon, UserCircleIcon, EditIcon, LogOutIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
@@ -81,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
             <UserMenu onNavigate={onNavigate} />
           ) : (
             <button onClick={() => onNavigate('login')} className="flex items-center gap-2 text-sm font-medium text-[#034C83] hover:bg-[#7CBCC5]/20 p-2 rounded-lg transition-colors min-h-[44px]">
-              <OwlSVG className="w-5 h-5"/>
+              <TeacherIcon className="w-5 h-5"/>
               <span className="hidden md:inline">Área do Docente</span>
             </button>
           )}

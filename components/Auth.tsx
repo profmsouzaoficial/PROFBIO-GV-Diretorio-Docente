@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { supabase } from '../supabaseClient';
-import { OwlSVG, XIcon } from './icons';
+import { TeacherIcon, XIcon } from './icons';
 
 const Auth: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigate }) => {
   const [loading, setLoading] = useState(false);
@@ -38,7 +37,7 @@ const Auth: React.FC<{ onNavigate: (page: string) => void }> = ({ onNavigate }) 
         </button>
         <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center bg-[#034C83] p-3 rounded-full mb-4">
-                <OwlSVG className="w-10 h-10 text-white"/>
+                <TeacherIcon className="w-10 h-10 text-white"/>
             </div>
           <h1 className="text-2xl font-bold text-[#034C83]">Área do Docente</h1>
           <p className="text-gray-500">Acesse para editar seu perfil.</p>

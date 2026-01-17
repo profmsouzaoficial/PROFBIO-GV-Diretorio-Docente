@@ -1,8 +1,10 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Professor } from '../types';
 import DissertationCard from './DissertationCard';
-import { ExternalLinkIcon, MailIcon, EditIcon } from './icons';
+import { ExternalLinkIcon, MailIcon, EditIcon, UserPlusIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
+import ApplicationModal from './ApplicationModal';
 
 interface ProfessorDetailProps {
   professor: Professor | null;
@@ -23,13 +25,12 @@ const WelcomeMessage: React.FC = () => (
 
 const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate }) => {
   const { user } = useAuth();
+  const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
   
   if (!professor) {
     return <WelcomeMessage />;
   }
 
-  // A user can edit if they are logged in and their ID matches the professor's user_id.
-  // In a real app, you might also check for an 'admin' role.
   const canEdit = user && user.id === professor.user_id;
 
   return (
@@ -40,23 +41,34 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
           alt={`Foto de ${professor.name}`}
           className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover shadow-lg border-4 border-white"
         />
-        <div className="mt-4 md:mt-0 flex-grow">
-          <div className="flex justify-between items-start">
+        <div className="mt-4 md:mt-0 flex-grow w-full">
+          <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>
                 <h2 className="text-3xl md:text-4xl font-extrabold text-[#034C83]">{professor.name}</h2>
                 <p className="text-lg text-[#39A3B0] font-medium mt-1">{professor.title}</p>
             </div>
-            {canEdit && (
-                <button 
-                    onClick={() => onNavigate('editProfile', { professorId: professor.id })}
-                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#39A3B0] rounded-lg hover:bg-[#2c8b96] transition-colors shadow-sm min-w-[44px] min-h-[44px] justify-center"
-                >
-                    <EditIcon className="w-4 h-4"/>
-                    <span className="hidden sm:inline">Editar Perfil</span>
-                </button>
-            )}
+            
+            <div className="flex gap-2 w-full sm:w-auto">
+                {canEdit ? (
+                    <button 
+                        onClick={() => onNavigate('editProfile', { professorId: professor.id })}
+                        className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#39A3B0] rounded-lg hover:bg-[#2c8b96] transition-colors shadow-sm min-h-[44px] justify-center"
+                    >
+                        <EditIcon className="w-4 h-4"/>
+                        <span>Editar Perfil</span>
+                    </button>
+                ) : (
+                    <button 
+                        onClick={() => setIsApplyModalOpen(true)}
+                        className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#034C83] rounded-lg hover:bg-[#023b66] transition-all shadow-md min-h-[44px] justify-center"
+                    >
+                        <UserPlusIcon className="w-4 h-4"/>
+                        <span>Candidatar-se à Orientação</span>
+                    </button>
+                )}
+            </div>
           </div>
-          <div className="flex flex-wrap gap-4 mt-4 text-sm">
+          <div className="flex flex-wrap gap-4 mt-6 text-sm">
              <a href={`mailto:${professor.public_email}`} className="flex items-center gap-2 text-[#034C83] hover:text-[#39A3B0] font-medium transition-colors">
                 <MailIcon className="w-5 h-5"/>
                 <span>{professor.public_email}</span>
@@ -71,7 +83,7 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
 
       <section className="bg-white p-6 rounded-xl border border-gray-200 mb-8">
         <h3 className="text-xl font-bold text-[#034C83] mb-3">Sobre</h3>
-        <p className="text-gray-700 leading-relaxed">{professor.mini_bio}</p>
+        <p className="text-gray-700 leading-relaxed text-justify">{professor.mini_bio}</p>
         <div className="mt-4">
             <h4 className="font-semibold text-gray-700 mb-2">Linhas de Pesquisa:</h4>
             <div className="flex flex-wrap gap-2">
@@ -87,11 +99,22 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
       <section>
         <h3 className="text-2xl font-bold text-[#034C83] mb-4">Orientações e Produções</h3>
         <div>
-          {professor.dissertations.map(diss => (
-            <DissertationCard key={diss.id} dissertation={diss} />
-          ))}
+          {professor.dissertations.length > 0 ? (
+              professor.dissertations.map(diss => (
+                <DissertationCard key={diss.id} dissertation={diss} />
+              ))
+          ) : (
+              <p className="text-gray-500 italic text-sm p-4 bg-white rounded-lg border border-dashed border-gray-300">Nenhuma orientação listada publicamente até o momento.</p>
+          )}
         </div>
       </section>
+
+      <ApplicationModal 
+        isOpen={isApplyModalOpen} 
+        onClose={() => setIsApplyModalOpen(false)} 
+        professorId={professor.id} 
+        professorName={professor.name}
+      />
     </div>
   );
 };
