@@ -1,6 +1,7 @@
 
 import { Professor } from './types';
 
+// Fix: Adding missing required properties 'disponivel' and 'is_admin' to comply with Professor interface
 export const professorsData: Professor[] = [
   {
     id: 'p1',
@@ -11,7 +12,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'frederico.gomides@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Antonio+Frederico&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p2',
@@ -22,7 +25,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'carladasilvamachado@gmail.com',
     photo_url: 'https://ui-avatars.com/api/?name=Carla+Machado&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p3',
@@ -33,7 +38,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'cibele.velloso@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Cibele+Rodrigues&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p4',
@@ -44,7 +51,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'dirce.oliveira@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Dirce+Oliveira&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p5',
@@ -55,7 +64,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'fabio.pieri@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Fabio+Pieri&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p6',
@@ -66,7 +77,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'fernandabqi@gmail.com',
     photo_url: 'https://ui-avatars.com/api/?name=Fernanda+Assis&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p7',
@@ -77,7 +90,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'girley.francisco@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Girley+Assis&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p8',
@@ -88,7 +103,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'ione.matos@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Ione+Matos&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p9',
@@ -99,7 +116,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'joao.antunes@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Joao+Antunes&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p10',
@@ -110,7 +129,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'leonardo.mees@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Leonardo+Mees&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p11',
@@ -121,7 +142,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'mabel.salas@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Mabel+Salas&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p12',
@@ -132,7 +155,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'maisa.silva@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Maisa+Silva&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p13',
@@ -143,7 +168,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'nagem7@gmail.com',
     photo_url: 'https://ui-avatars.com/api/?name=Marcelo+Nagem&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p14',
@@ -154,7 +181,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'maria.gabriela@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Maria+Gabriela&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p15',
@@ -165,7 +194,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'michelle.antunes@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Michelle+Antunes&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p16',
@@ -176,7 +207,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'rbfcampos@gmail.com',
     photo_url: 'https://ui-avatars.com/api/?name=Renata+Campos&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p17',
@@ -187,7 +220,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'robertoql@gmail.com',
     photo_url: 'https://ui-avatars.com/api/?name=Roberto+Lautner&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p18',
@@ -198,7 +233,9 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'thiagomartinsantos@yahoo.com.br',
     photo_url: 'https://ui-avatars.com/api/?name=Thiago+Santos&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   },
   {
     id: 'p19',
@@ -209,6 +246,8 @@ export const professorsData: Professor[] = [
     lattes_url: 'http://lattes.cnpq.br/',
     public_email: 'marcio.souza@ufjf.br',
     photo_url: 'https://ui-avatars.com/api/?name=Marcio+Souza&background=034C83&color=fff',
-    dissertations: []
+    dissertations: [],
+    disponivel: true,
+    is_admin: false
   }
 ];

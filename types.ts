@@ -60,6 +60,8 @@ export interface Professor {
   photo_url: string;
   dissertations: Dissertation[];
   candidates?: Candidate[];
+  disponivel: boolean;
+  is_admin: boolean;
 }
 
 export type AuthSession = Session;

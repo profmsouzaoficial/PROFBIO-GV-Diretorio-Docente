@@ -48,7 +48,8 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     
     const [formData, setFormData] = useState({
         name: '', title: '', mini_bio: '', public_email: '', 
-        lattes_url: '', photo_url: '', lines_of_research: [] as string[]
+        lattes_url: '', photo_url: '', lines_of_research: [] as string[],
+        disponivel: true
     });
 
     const [passwordData, setPasswordData] = useState({
@@ -87,7 +88,8 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 public_email: professor.public_email || '',
                 lattes_url: professor.lattes_url || '',
                 photo_url: professor.photo_url || '',
-                lines_of_research: professor.lines_of_research || []
+                lines_of_research: professor.lines_of_research || [],
+                disponivel: professor.disponivel ?? true
             });
             setDissertations(professor.dissertations || []);
             fetchCandidates(professor.id);
@@ -189,8 +191,9 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 lattes_url: formData.lattes_url,
                 photo_url: formData.photo_url,
                 lines_of_research: formData.lines_of_research,
+                disponivel: formData.disponivel,
                 updated_at: new Date().toISOString()
-            }).eq('user_id', professor.user_id);
+            }).eq('id', professor.id);
             if (error) throw error;
             setMessage({ type: 'success', text: 'Dados do perfil atualizados!' });
             onRefresh();
@@ -329,7 +332,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
             <div className="max-w-4xl mx-auto space-y-8 pb-12">
                 <div className="flex justify-between items-center">
                     <h1 className="text-2xl font-bold text-[#034C83] flex items-center gap-2">
-                        <EditIcon className="w-6 h-6"/> Painel do Docente
+                        <EditIcon className="w-6 h-6"/> Painel do Docente {professor.user_id !== supabase.auth.getUser() ? '(Modo Master)' : ''}
                     </h1>
                     <button onClick={() => onNavigate('home')} className="p-2 rounded-full hover:bg-gray-200 text-gray-400">
                         <XIcon className="w-6 h-6" />
@@ -338,7 +341,23 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
 
                 {/* 1. SEÇÃO MEU PERFIL */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
-                    <h2 className="text-xl font-bold text-[#034C83] mb-6 pb-2 border-b border-gray-100">Meu Perfil</h2>
+                    <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100">
+                      <h2 className="text-xl font-bold text-[#034C83]">Meu Perfil</h2>
+                      {/* TOGGLE DE DISPONIBILIDADE */}
+                      <label className="inline-flex items-center cursor-pointer">
+                        <span className="mr-3 text-sm font-bold text-gray-600">Disponível para orientações?</span>
+                        <div className="relative">
+                          <input 
+                            type="checkbox" 
+                            className="sr-only peer" 
+                            checked={formData.disponivel}
+                            onChange={(e) => setFormData({...formData, disponivel: e.target.checked})}
+                          />
+                          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#39A3B0]"></div>
+                        </div>
+                      </label>
+                    </div>
+
                     <form onSubmit={handleSaveBasicInfo} className="space-y-6">
                         <div className="flex flex-col items-center gap-4 py-4 mb-6">
                             <div className="relative">
@@ -415,7 +434,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                     </form>
                 </section>
 
-                {/* 3. SEÇÃO CANDIDATOS À ORIENTAÇÃO (MOVIDA PARA CÁ) */}
+                {/* 3. SEÇÃO CANDIDATOS À ORIENTAÇÃO */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
                     <div className="flex items-center gap-2 mb-6 pb-2 border-b border-gray-100">
                         <UserPlusIcon className="w-5 h-5 text-[#034C83]"/>
@@ -634,8 +653,8 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                         </div>
                     </div>
 
-                    <button onClick={handleSaveDissertation} disabled={dissertationLoading || pdfUploading || podcastUploading} className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all active:scale-95">
-                        {dissertationLoading ? 'Salvando...' : 'Salvar Orientação'}
+                    <button onClick={handleSaveBasicInfo} disabled={loading} className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all active:scale-95">
+                        {loading ? 'Salvando...' : 'Salvar Alterações'}
                     </button>
                 </div>
             </Modal>

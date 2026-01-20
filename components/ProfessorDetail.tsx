@@ -1,10 +1,11 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Professor } from '../types';
 import DissertationCard from './DissertationCard';
 import { ExternalLinkIcon, MailIcon, EditIcon, UserPlusIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
 import ApplicationModal from './ApplicationModal';
+import { supabase } from '../supabaseClient';
 
 interface ProfessorDetailProps {
   professor: Professor | null;
@@ -26,12 +27,27 @@ const WelcomeMessage: React.FC = () => (
 const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate }) => {
   const { user } = useAuth();
   const [isApplyModalOpen, setIsApplyModalOpen] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // Efeito para verificar se o usuário logado é admin
+  React.useEffect(() => {
+    const checkAdmin = async () => {
+      if (!user) {
+        setIsAdmin(false);
+        return;
+      }
+      const { data } = await supabase.from('professors').select('is_admin').eq('user_id', user.id).single();
+      if (data) setIsAdmin(data.is_admin);
+    };
+    checkAdmin();
+  }, [user]);
   
   if (!professor) {
     return <WelcomeMessage />;
   }
 
-  const canEdit = user && user.id === professor.user_id;
+  const isSelf = user && user.id === professor.user_id;
+  const canEdit = isSelf || isAdmin;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 lg:p-10 bg-gray-50/50 min-h-full">
@@ -55,9 +71,9 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
                         className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-[#39A3B0] rounded-lg hover:bg-[#2c8b96] transition-colors shadow-sm min-h-[44px] justify-center"
                     >
                         <EditIcon className="w-4 h-4"/>
-                        <span>Editar Perfil</span>
+                        <span>Editar Perfil {isAdmin && !isSelf && '(Master)'}</span>
                     </button>
-                ) : (
+                ) : professor.disponivel && (
                     <button 
                         onClick={() => setIsApplyModalOpen(true)}
                         className="flex-1 sm:flex-none flex items-center gap-2 px-4 py-2 text-sm font-bold text-white bg-[#034C83] rounded-lg hover:bg-[#023b66] transition-all shadow-md min-h-[44px] justify-center"
@@ -65,6 +81,11 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
                         <UserPlusIcon className="w-4 h-4"/>
                         <span>Candidatar-se à Orientação</span>
                     </button>
+                )}
+                {!canEdit && !professor.disponivel && (
+                  <span className="px-4 py-2 text-sm font-bold text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed">
+                    Indisponível para novas orientações
+                  </span>
                 )}
             </div>
           </div>
