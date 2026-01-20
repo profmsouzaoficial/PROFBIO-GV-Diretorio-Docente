@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Professor, Dissertation, Product, ProductType, Candidate } from '../types';
 import { EditIcon, XIcon, MailIcon, LinkIcon, CameraIcon, BookOpenIcon, FileTextIcon, MicIcon, KeyIcon, TeacherIcon, UserPlusIcon, WhatsAppIcon, CheckCircleIcon, XCircleIcon } from './icons';
 import { supabase } from '../supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
 import ConfirmModal from './ConfirmModal';
 
@@ -37,6 +38,7 @@ const TrashIcon = ({ className = "w-5 h-5" }) => (
 );
 
 const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefresh }) => {
+    const { user } = useAuth();
     const fileInputRef = useRef<HTMLInputElement>(null);
     const pdfInputRef = useRef<HTMLInputElement>(null);
     const podcastInputRef = useRef<HTMLInputElement>(null);
@@ -327,12 +329,14 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     const inputClasses = "w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#39A3B0] outline-none transition-all";
     const labelClasses = "block text-sm font-bold text-gray-700 mb-2";
 
+    const isMasterMode = professor.user_id !== user?.id;
+
     return (
         <div className="flex-grow bg-gray-50/50 p-4 sm:p-6 overflow-y-auto scroll-container">
             <div className="max-w-4xl mx-auto space-y-8 pb-12">
                 <div className="flex justify-between items-center">
                     <h1 className="text-2xl font-bold text-[#034C83] flex items-center gap-2">
-                        <EditIcon className="w-6 h-6"/> Painel do Docente {professor.user_id !== supabase.auth.getUser() ? '(Modo Master)' : ''}
+                        <EditIcon className="w-6 h-6"/> Painel do Docente {isMasterMode ? '(Modo Master)' : ''}
                     </h1>
                     <button onClick={() => onNavigate('home')} className="p-2 rounded-full hover:bg-gray-200 text-gray-400">
                         <XIcon className="w-6 h-6" />
