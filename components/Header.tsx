@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { TeacherIcon, MenuIcon, UserCircleIcon, EditIcon, LogOutIcon } from './icons';
+import { BooksIcon, MenuIcon, UserCircleIcon, EditIcon, LogOutIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
@@ -68,7 +68,15 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
                 onClick={() => onNavigate('home')}
                 aria-label="Voltar para a página inicial"
             >
-                <img src="https://www.profbio.ufmg.br/imagens/logo.png" alt="PROFBIO Logo" className="h-10" />
+                <img 
+                    src="https://virtual.unemat.br/profbio/pluginfile.php/23/mod_label/intro/profbio-horizontal.png" 
+                    onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = '/profbio-horizontal.png';
+                    }}
+                    alt="PROFBIO Logo" 
+                    className="h-10 sm:h-11 w-auto object-contain" 
+                />
                 <div className="hidden sm:block">
                     <h1 className="text-sm font-bold text-[#034C83] leading-tight">UFJF/GV</h1>
                     <p className="text-xs text-gray-500 leading-tight">Corpo Docente</p>
@@ -80,7 +88,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick, onNavigate }) => {
             <UserMenu onNavigate={onNavigate} />
           ) : (
             <button onClick={() => onNavigate('login')} className="flex items-center gap-2 text-sm font-medium text-[#034C83] hover:bg-[#7CBCC5]/20 p-2 rounded-lg transition-colors min-h-[44px]">
-              <TeacherIcon className="w-5 h-5"/>
+              <BooksIcon className="w-5 h-5"/>
               <span className="hidden md:inline">Área do Docente</span>
             </button>
           )}

@@ -5,7 +5,23 @@ interface IconProps {
   className?: string;
 }
 
-export const TeacherIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+export const BooksIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+  <svg 
+    xmlns="http://www.w3.org/2000/svg" 
+    viewBox="0 0 24 24" 
+    fill="none" 
+    stroke="currentColor" 
+    strokeWidth="2" 
+    strokeLinecap="round" 
+    strokeLinejoin="round" 
+    className={className}
+  >
+    <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+    <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+  </svg>
+);
+
+export const OwlIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
   <svg 
     xmlns="http://www.w3.org/2000/svg" 
     viewBox="0 0 24 24" 
@@ -16,13 +32,26 @@ export const TeacherIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
     strokeLinejoin="round" 
     className={className}
   >
-    <path d="M2 10L12 5L22 10L12 15L2 10Z" />
-    <path d="M6 12V16C6 17.1 6.9 18 8 18H16C17.1 18 18 17.1 18 16V12" />
-    <path d="M22 10V15" />
-    <circle cx="12" cy="13" r="3" />
-    <path d="M18 21C18 19.3 15.3 18 12 18C8.7 18 6 19.3 6 21" />
+    {/* Ear tufts */}
+    <path d="M4.5 4.5c0 3 2 4.5 4 5" />
+    <path d="M19.5 4.5c0 3-2 4.5-4 5" />
+    {/* Head and Body */}
+    <path d="M4.5 6v7.5a7.5 7.5 0 0 0 15 0V6" />
+    {/* Eyes */}
+    <circle cx="8.5" cy="11.5" r="2.5" />
+    <circle cx="8.5" cy="11.5" r="0.8" fill="currentColor" />
+    <circle cx="15.5" cy="11.5" r="2.5" />
+    <circle cx="15.5" cy="11.5" r="0.8" fill="currentColor" />
+    {/* Beak */}
+    <polygon points="10.5,13.2 13.5,13.2 12,15.5" fill="currentColor" />
+    {/* Chest feathers */}
+    <path d="M9 18c1 .8 2 1 3 1s2-.2 3-1" />
+    {/* Perch / Claws */}
+    <path d="M8.5 21v1M10 21v1M14 21v1M15.5 21v1" />
   </svg>
 );
+
+export const TeacherIcon: React.FC<IconProps> = BooksIcon;
 
 export const KeyIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -159,3 +188,44 @@ export const XCircleIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
     <line x1="9" y1="9" x2="15" y2="15" />
   </svg>
 );
+
+export const BotIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M12 8V4H8" />
+    <rect width="16" height="12" x="4" y="8" rx="2" />
+    <path d="M2 14h2" />
+    <path d="M20 14h2" />
+    <path d="M15 13v2" />
+    <path d="M9 13v2" />
+  </svg>
+);
+
+export const MessageSquareIcon: React.FC<IconProps> = ({ className = 'w-6 h-6' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+export const SendIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <line x1="22" y1="2" x2="11" y2="13" />
+    <polygon points="22 2 15 22 11 13 2 9 22 2" />
+  </svg>
+);
+
+export const SparklesIcon: React.FC<IconProps> = ({ className = 'w-5 h-5' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+    <path d="M5 3v4" />
+    <path d="M19 17v4" />
+    <path d="M3 5h4" />
+    <path d="M17 19h4" />
+  </svg>
+);
+
+export const ChevronDownIcon: React.FC<IconProps> = ({ className = 'w-4 h-4' }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+

@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Professor } from '../types';
 import { SearchIcon } from './icons';
+import { normalizePhotoUrl, getAvatarFallback } from '../utils/photo';
 
 interface ProfessorsListProps {
   professors: Professor[];
@@ -77,7 +78,17 @@ const ProfessorsList: React.FC<ProfessorsListProps> = ({ professors, selectedPro
                   onClick={() => onSelectProfessor(professor.id)}
                   className={`w-full text-left p-4 flex items-center gap-4 transition-all duration-200 ${selectedProfessorId === professor.id ? 'bg-[#7CBCC5]/20 border-l-4 border-[#034C83]' : 'hover:bg-gray-50'}`}
                 >
-                  <img src={professor.photo_url} alt={professor.name} className="w-12 h-12 rounded-full object-cover flex-shrink-0 border border-gray-200 shadow-sm" />
+                  <div className="w-12 h-12 aspect-square rounded-full overflow-hidden flex-shrink-0 border border-gray-200 shadow-sm bg-gray-50 flex items-center justify-center">
+                    <img 
+                      src={normalizePhotoUrl(professor.photo_url, professor.name)} 
+                      alt={professor.name} 
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = getAvatarFallback(professor.name);
+                      }}
+                      className="w-full h-full object-cover object-center aspect-square" 
+                    />
+                  </div>
                   <div className="min-w-0 flex-grow">
                     <h3 className="font-bold text-[#034C83] leading-tight text-sm truncate">{professor.name}</h3>
                     <p className="text-xs text-[#39A3B0] font-medium mt-1 truncate">

@@ -5,10 +5,12 @@ import ProfessorsList from './components/ProfessorsList';
 import ProfessorDetail from './components/ProfessorDetail';
 import Auth from './components/Auth';
 import EditProfile from './components/EditProfile';
+import ChatBot from './components/ChatBot';
 import { Professor } from './types';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './supabaseClient';
 import { professorsData } from './data';
+import { normalizePhotoUrl } from './utils/photo';
 
 interface ViewState {
   page: 'home' | 'login' | 'editProfile';
@@ -55,6 +57,7 @@ const AppContent: React.FC = () => {
 
       const sortedData = data.map(prof => ({
           ...prof,
+          photo_url: normalizePhotoUrl(prof.photo_url, prof.name),
           dissertations: (prof.dissertations || []).sort((a: any, b: any) => (b.year || 0) - (a.year || 0))
       }));
 
@@ -80,6 +83,29 @@ const AppContent: React.FC = () => {
         setView({ page: 'home' });
     }
   }, [session, view.page]);
+
+  // Sincroniza e vincula o user_id do Supabase Auth com o perfil do professor correspondente
+  useEffect(() => {
+    if (session?.user && professors.length > 0) {
+      const userEmail = session.user.email?.toLowerCase().trim();
+      const prof = professors.find(p => 
+        (p.user_id && p.user_id === session.user.id) ||
+        (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail)
+      );
+
+      if (prof && prof.user_id !== session.user.id) {
+        supabase
+          .from('professors')
+          .update({ user_id: session.user.id })
+          .eq('id', prof.id)
+          .then(({ error }) => {
+            if (!error) {
+              setProfessors(prev => prev.map(p => p.id === prof.id ? { ...p, user_id: session.user.id } : p));
+            }
+          });
+      }
+    }
+  }, [session, professors]);
 
   useEffect(() => {
     if (view.page === 'home' && !selectedProfessorId && !isLoading && professors.length > 0) {
@@ -113,13 +139,17 @@ const AppContent: React.FC = () => {
   );
 
   const renderContent = () => {
-    if (isLoading && view.page === 'home') return renderLoading();
+    if (isLoading) return renderLoading();
 
     switch (view.page) {
       case 'login':
         return <Auth onNavigate={handleNavigate} />;
       case 'editProfile':
-        const currentUserProf = professors.find(p => p.user_id === session?.user?.id);
+        const userEmail = session?.user?.email?.toLowerCase().trim();
+        const currentUserProf = professors.find(p => 
+          (p.user_id && p.user_id === session?.user?.id) ||
+          (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail)
+        );
         const isAdmin = currentUserProf?.is_admin === true;
         
         // Se for admin e tiver um professorId nos params, edita o selecionado.
@@ -174,6 +204,7 @@ const AppContent: React.FC = () => {
       <main className="flex-grow flex flex-col relative overflow-hidden">
           {renderContent()}
       </main>
+      <ChatBot />
     </div>
   );
 };

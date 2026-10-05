@@ -6,6 +6,7 @@ import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
 import ConfirmModal from './ConfirmModal';
+import { normalizePhotoUrl, getAvatarFallback } from '../utils/photo';
 
 interface EditProfileProps {
     professor: Professor | undefined;
@@ -126,9 +127,26 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     const handleFileUpload = async (file: File, bucket: string) => {
         if (!professor) return null;
         try {
-            const fileExt = file.name.split('.').pop();
-            const fileName = `${professor.user_id}-${Date.now()}.${fileExt}`;
-            const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file);
+            const rawExt = file.name.split('.').pop()?.toLowerCase() || 'png';
+            const fileExt = rawExt === 'jpeg' ? 'jpg' : rawExt;
+            const prefix = professor.id || professor.user_id || 'prof';
+            const fileName = `${prefix}-${Date.now()}.${fileExt}`;
+            
+            // Garantir Content-Type correto especialmente para GIFs do Lattes
+            let contentType = file.type;
+            if (!contentType) {
+                if (fileExt === 'gif') contentType = 'image/gif';
+                else if (fileExt === 'png') contentType = 'image/png';
+                else if (fileExt === 'jpg' || fileExt === 'jpeg') contentType = 'image/jpeg';
+                else if (fileExt === 'webp') contentType = 'image/webp';
+                else if (fileExt === 'pdf') contentType = 'application/pdf';
+                else if (fileExt === 'mp3') contentType = 'audio/mpeg';
+            }
+
+            const { error: uploadError } = await supabase.storage.from(bucket).upload(fileName, file, {
+                contentType,
+                upsert: true
+            });
             if (uploadError) throw uploadError;
             const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(fileName);
             return publicUrl;
@@ -143,8 +161,11 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         try {
             setUploading(true);
             const url = await handleFileUpload(file, 'avatars');
-            if (url) setFormData(prev => ({ ...prev, photo_url: url }));
-            setMessage({ type: 'success', text: 'Foto atualizada com sucesso!' });
+            if (url) {
+                const normalized = normalizePhotoUrl(url);
+                setFormData(prev => ({ ...prev, photo_url: normalized }));
+            }
+            setMessage({ type: 'success', text: 'Foto (GIF/Imagem) atualizada com sucesso!' });
         } catch (error: any) {
             alert('Erro na foto: ' + formatError(error, 'avatars'));
         } finally {
@@ -185,7 +206,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         if (!professor) return;
         setLoading(true);
         try {
-            const { error } = await supabase.from('professors').update({
+            const updatePayload: any = {
                 name: formData.name,
                 title: formData.title,
                 mini_bio: formData.mini_bio,
@@ -195,7 +216,11 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                 lines_of_research: formData.lines_of_research,
                 disponivel: formData.disponivel,
                 updated_at: new Date().toISOString()
-            }).eq('id', professor.id);
+            };
+            if (user?.id && !professor.user_id) {
+                updatePayload.user_id = user.id;
+            }
+            const { error } = await supabase.from('professors').update(updatePayload).eq('id', professor.id);
             if (error) throw error;
             setMessage({ type: 'success', text: 'Dados do perfil atualizados!' });
             onRefresh();
@@ -324,12 +349,36 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         finally { setConfirmDelete({ isOpen: false, id: null }); }
     };
 
-    if (!professor) return null;
+    if (!professor) {
+        return (
+            <div className="flex-grow flex items-center justify-center p-6 bg-gray-50/50">
+                <div className="max-w-md w-full bg-white p-8 rounded-2xl shadow-lg border border-gray-200 text-center animate-in fade-in duration-200">
+                    <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-xl font-bold text-[#034C83] mb-2">Perfil não vinculado</h2>
+                    <p className="text-gray-600 text-sm mb-6 leading-relaxed">
+                        Não encontramos um perfil de docente cadastrado para o e-mail <strong>{user?.email}</strong>.
+                    </p>
+                    <button
+                        onClick={() => onNavigate('home')}
+                        className="w-full bg-[#034C83] text-white py-2.5 px-4 rounded-xl font-bold hover:bg-[#023b66] transition-all shadow-sm"
+                    >
+                        Voltar para a página inicial
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     const inputClasses = "w-full px-4 py-2.5 bg-white text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#39A3B0] outline-none transition-all";
     const labelClasses = "block text-sm font-bold text-gray-700 mb-2";
 
-    const isMasterMode = professor.user_id !== user?.id;
+    const isMasterMode = Boolean(
+        user?.id && professor.user_id && professor.user_id !== user.id
+    );
 
     return (
         <div className="flex-grow bg-gray-50/50 p-4 sm:p-6 overflow-y-auto scroll-container">
@@ -363,14 +412,64 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                     </div>
 
                     <form onSubmit={handleSaveBasicInfo} className="space-y-6">
-                        <div className="flex flex-col items-center gap-4 py-4 mb-6">
-                            <div className="relative">
-                                <img src={formData.photo_url || `https://ui-avatars.com/api/?name=${formData.name}&background=034C83&color=fff`} className="w-32 h-32 rounded-full object-cover border-4 border-gray-100 shadow-md" alt="Foto" />
-                                <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading} className="absolute bottom-0 right-0 p-2.5 bg-[#39A3B0] text-white rounded-full shadow-lg hover:scale-110 disabled:opacity-50">
+                        <div className="flex flex-col items-center gap-3 py-4 mb-6">
+                            <div className="relative flex-shrink-0">
+                                <div className="w-32 h-32 sm:w-36 sm:h-36 aspect-square rounded-full overflow-hidden border-4 border-gray-100 shadow-md bg-gray-50 flex items-center justify-center">
+                                    <img 
+                                        src={normalizePhotoUrl(formData.photo_url, formData.name)} 
+                                        onError={(e) => {
+                                            e.currentTarget.onerror = null;
+                                            e.currentTarget.src = getAvatarFallback(formData.name);
+                                        }}
+                                        className="w-full h-full object-cover object-center aspect-square" 
+                                        alt="Foto" 
+                                    />
+                                </div>
+                                <button 
+                                    type="button" 
+                                    onClick={() => fileInputRef.current?.click()} 
+                                    disabled={uploading} 
+                                    className="absolute bottom-0 right-0 p-2.5 bg-[#39A3B0] text-white rounded-full shadow-lg hover:scale-110 disabled:opacity-50 transition-transform cursor-pointer"
+                                    title="Carregar imagem do computador (GIF, PNG, JPG, WebP)"
+                                >
                                     {uploading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <CameraIcon className="w-5 h-5" />}
                                 </button>
                             </div>
-                            <input type="file" ref={fileInputRef} onChange={handlePhotoChange} className="hidden" accept="image/*" />
+                            <div className="text-center">
+                                <p className="text-xs font-semibold text-gray-600">
+                                    Aceita arquivos <span className="text-[#034C83] font-bold">.GIF (Lattes)</span>, .PNG, .JPG e .WebP
+                                </p>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                    Clique no ícone da câmera para enviar o arquivo ou insira o link abaixo
+                                </p>
+                            </div>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={handlePhotoChange} 
+                                className="hidden" 
+                                accept="image/*, image/gif, image/png, image/jpeg, image/webp, .gif, .png, .jpg, .jpeg, .webp" 
+                            />
+                        </div>
+
+                        {/* Campo de URL da foto para flexibilidade com Lattes / Supabase */}
+                        <div className="bg-gray-50/70 p-4 rounded-xl border border-gray-200">
+                            <label className={labelClasses}>
+                                Link / URL da Foto (Lattes, Supabase ou Externa)
+                            </label>
+                            <input 
+                                type="url" 
+                                className={inputClasses} 
+                                placeholder="https://... (ex: link da foto do Lattes, arquivo .gif ou Supabase Storage)"
+                                value={formData.photo_url} 
+                                onChange={e => {
+                                    const rawVal = e.target.value;
+                                    setFormData({ ...formData, photo_url: normalizePhotoUrl(rawVal) });
+                                }} 
+                            />
+                            <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+                                Dica: Se você copiar o link de uma foto do Lattes (CNPq) ou do Storage do Supabase, o sistema formata automaticamente para exibição direta.
+                            </p>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -448,11 +547,13 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                         {candidates.length > 0 ? (
                             candidates.map(cand => (
                                 <div key={cand.id} className="p-6 border border-gray-100 rounded-2xl bg-gray-50/40 flex flex-col md:flex-row gap-5 items-start relative group shadow-sm">
-                                    <img 
-                                        src={cand.photo_url || `https://ui-avatars.com/api/?name=${cand.student_name}&background=39A3B0&color=fff`} 
-                                        className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-md flex-shrink-0"
-                                        alt={cand.student_name}
-                                    />
+                                    <div className="w-16 h-16 aspect-square rounded-full overflow-hidden border-2 border-white shadow-md flex-shrink-0 bg-gray-100 flex items-center justify-center">
+                                        <img 
+                                            src={cand.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(cand.student_name)}&background=39A3B0&color=fff`} 
+                                            className="w-full h-full object-cover object-center aspect-square"
+                                            alt={cand.student_name}
+                                        />
+                                    </div>
                                     <div className="flex-grow space-y-3 w-full">
                                         <div className="flex items-center justify-between gap-4">
                                             <h4 className="font-bold text-[#034C83] text-lg">{cand.student_name}</h4>

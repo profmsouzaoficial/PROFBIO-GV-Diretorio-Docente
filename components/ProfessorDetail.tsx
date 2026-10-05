@@ -6,6 +6,7 @@ import { ExternalLinkIcon, MailIcon, EditIcon, UserPlusIcon } from './icons';
 import { useAuth } from '../contexts/AuthContext';
 import ApplicationModal from './ApplicationModal';
 import { supabase } from '../supabaseClient';
+import { normalizePhotoUrl, getAvatarFallback } from '../utils/photo';
 
 interface ProfessorDetailProps {
   professor: Professor | null;
@@ -36,8 +37,12 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
         setIsAdmin(false);
         return;
       }
-      const { data } = await supabase.from('professors').select('is_admin').eq('user_id', user.id).single();
-      if (data) setIsAdmin(data.is_admin);
+      const { data } = await supabase
+        .from('professors')
+        .select('is_admin')
+        .or(`user_id.eq.${user.id},public_email.ilike.${user.email}`)
+        .maybeSingle();
+      if (data) setIsAdmin(Boolean(data.is_admin));
     };
     checkAdmin();
   }, [user]);
@@ -46,17 +51,28 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
     return <WelcomeMessage />;
   }
 
-  const isSelf = user && user.id === professor.user_id;
+  const isSelf = Boolean(
+    user && (
+      (professor.user_id && user.id === professor.user_id) ||
+      (user.email && professor.public_email && user.email.toLowerCase().trim() === professor.public_email.toLowerCase().trim())
+    )
+  );
   const canEdit = isSelf || isAdmin;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 lg:p-10 bg-gray-50/50 min-h-full">
       <header className="flex flex-col md:flex-row items-start gap-6 md:gap-8 mb-8">
-        <img
-          src={professor.photo_url}
-          alt={`Foto de ${professor.name}`}
-          className="w-32 h-32 md:w-40 md:h-40 rounded-full object-cover shadow-lg border-4 border-white"
-        />
+        <div className="relative flex-shrink-0 w-32 h-32 md:w-40 md:h-40 aspect-square rounded-full overflow-hidden shadow-lg border-4 border-white bg-gray-100 flex items-center justify-center">
+          <img
+            src={normalizePhotoUrl(professor.photo_url, professor.name)}
+            alt={`Foto de ${professor.name}`}
+            onError={(e) => {
+              e.currentTarget.onerror = null;
+              e.currentTarget.src = getAvatarFallback(professor.name);
+            }}
+            className="w-full h-full object-cover object-center aspect-square"
+          />
+        </div>
         <div className="mt-4 md:mt-0 flex-grow w-full">
           <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
             <div>

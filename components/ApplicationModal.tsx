@@ -104,16 +104,18 @@ const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onClose, pr
       ) : (
         <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
           <div className="flex flex-col items-center gap-2 mb-4">
-            <div className="relative group">
-              <img 
-                src={formData.photo_url || `https://ui-avatars.com/api/?name=${formData.student_name || 'Aluno'}&background=39A3B0&color=fff`} 
-                className="w-24 h-24 rounded-full object-cover border-2 border-gray-100 shadow-sm"
-                alt="Preview"
-              />
+            <div className="relative group flex-shrink-0">
+              <div className="w-24 h-24 aspect-square rounded-full overflow-hidden border-2 border-gray-100 shadow-sm bg-gray-50 flex items-center justify-center">
+                <img 
+                  src={formData.photo_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.student_name || 'Aluno')}&background=39A3B0&color=fff`} 
+                  className="w-full h-full object-cover object-center aspect-square"
+                  alt="Preview"
+                />
+              </div>
               <button 
                 type="button" 
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute bottom-0 right-0 bg-[#39A3B0] text-white p-2 rounded-full shadow-lg hover:scale-105 transition-transform"
+                className="absolute bottom-0 right-0 bg-[#39A3B0] text-white p-2 rounded-full shadow-lg hover:scale-105 transition-transform cursor-pointer"
               >
                 {uploading ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"/> : <CameraIcon className="w-4 h-4" />}
               </button>
