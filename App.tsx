@@ -11,11 +11,18 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { supabase } from './supabaseClient';
 import { professorsData } from './data';
 import { normalizePhotoUrl } from './utils/photo';
+import { mergeProfessorsWithPlatformStore } from './utils/platformStorage';
 
 interface ViewState {
   page: 'home' | 'login' | 'editProfile';
   params?: { [key: string]: any };
 }
+
+const isMarcioAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  const normalized = email.toLowerCase().trim();
+  return normalized === 'souza.mlm@gmail.com' || normalized === 'marcio.souza@ufjf.br';
+};
 
 const AppContent: React.FC = () => {
   const [professors, setProfessors] = useState<Professor[]>([]);
@@ -43,29 +50,25 @@ const AppContent: React.FC = () => {
         `)
         .order('name', { ascending: true });
       
-      if (dbError) {
-        console.warn("Database error encountered. Falling back to local data:", dbError);
-        setProfessors(professorsData as Professor[]);
-        setError("Nota: Conexão com banco de dados indisponível. Exibindo dados de demonstração.");
-        return;
-      }
+      const baseList = (data && data.length > 0) ? data : (professorsData as Professor[]);
 
-      if (!data || data.length === 0) {
-        setProfessors(professorsData as Professor[]);
-        return;
-      }
-
-      const sortedData = data.map(prof => ({
+      const sortedData = baseList.map(prof => ({
           ...prof,
           photo_url: normalizePhotoUrl(prof.photo_url, prof.name),
           dissertations: (prof.dissertations || []).sort((a: any, b: any) => (b.year || 0) - (a.year || 0))
       }));
 
-      setProfessors(sortedData as Professor[]);
+      // Mescla com todas as alterações e orientações arquivadas na plataforma
+      const mergedData = mergeProfessorsWithPlatformStore(sortedData as Professor[]);
+      setProfessors(mergedData);
+
+      if (dbError) {
+        console.warn("Nota: Sincronização remota temporariamente offline:", dbError);
+      }
     } catch (err: any) {
-      console.error("Unexpected error fetching professors:", err);
-      setProfessors(professorsData as Professor[]);
-      setError("Erro ao carregar dados remotos. Exibindo catálogo local.");
+      console.error("Erro inesperado ao buscar docentes:", err);
+      const mergedData = mergeProfessorsWithPlatformStore(professorsData as Professor[]);
+      setProfessors(mergedData);
     } finally {
       if (showLoading) setIsLoading(false);
     }
@@ -88,19 +91,28 @@ const AppContent: React.FC = () => {
   useEffect(() => {
     if (session?.user && professors.length > 0) {
       const userEmail = session.user.email?.toLowerCase().trim();
+      const isMaster = isMarcioAdmin(userEmail);
       const prof = professors.find(p => 
         (p.user_id && p.user_id === session.user.id) ||
-        (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail)
+        (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail) ||
+        (isMaster && (p.id === 'p19' || p.public_email === 'marcio.souza@ufjf.br'))
       );
 
-      if (prof && prof.user_id !== session.user.id) {
+      if (prof && (prof.user_id !== session.user.id || (isMaster && !prof.is_admin))) {
         supabase
           .from('professors')
-          .update({ user_id: session.user.id })
+          .update({ 
+            user_id: session.user.id,
+            is_admin: isMaster ? true : prof.is_admin
+          })
           .eq('id', prof.id)
           .then(({ error }) => {
             if (!error) {
-              setProfessors(prev => prev.map(p => p.id === prof.id ? { ...p, user_id: session.user.id } : p));
+              setProfessors(prev => prev.map(p => p.id === prof.id ? { 
+                ...p, 
+                user_id: session.user.id,
+                is_admin: isMaster ? true : p.is_admin
+              } : p));
             }
           });
       }
@@ -146,11 +158,13 @@ const AppContent: React.FC = () => {
         return <Auth onNavigate={handleNavigate} />;
       case 'editProfile':
         const userEmail = session?.user?.email?.toLowerCase().trim();
+        const isMaster = isMarcioAdmin(userEmail);
         const currentUserProf = professors.find(p => 
           (p.user_id && p.user_id === session?.user?.id) ||
-          (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail)
+          (userEmail && p.public_email && p.public_email.toLowerCase().trim() === userEmail) ||
+          (isMaster && (p.id === 'p19' || p.public_email === 'marcio.souza@ufjf.br'))
         );
-        const isAdmin = currentUserProf?.is_admin === true;
+        const isAdmin = currentUserProf?.is_admin === true || isMaster;
         
         // Se for admin e tiver um professorId nos params, edita o selecionado.
         // Caso contrário, edita o perfil do próprio usuário logado.

@@ -44,20 +44,156 @@
       .scroll-container {
         scrollbar-gutter: stable;
       }
+
+      /* Estilização Completa do Markdown do Chatbot */
+      .chat-markdown {
+        word-break: break-word;
+        font-size: 0.875rem;
+        line-height: 1.6;
+        color: #1f2937;
+      }
+      .chat-markdown h1 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: #034C83;
+        margin-top: 0.85rem;
+        margin-bottom: 0.4rem;
+        line-height: 1.35;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 0.25rem;
+      }
+      .chat-markdown h1:first-child {
+        margin-top: 0;
+      }
+      .chat-markdown h2 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: #023b66;
+        margin-top: 0.75rem;
+        margin-bottom: 0.35rem;
+        line-height: 1.35;
+      }
+      .chat-markdown h2:first-child {
+        margin-top: 0;
+      }
+      .chat-markdown h3 {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #0f172a;
+        margin-top: 0.6rem;
+        margin-bottom: 0.25rem;
+      }
+      .chat-markdown h3:first-child {
+        margin-top: 0;
+      }
+      .chat-markdown h4, .chat-markdown h5, .chat-markdown h6 {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #334155;
+        margin-top: 0.5rem;
+        margin-bottom: 0.2rem;
+      }
+      .chat-markdown p {
+        margin-bottom: 0.65rem;
+        line-height: 1.6;
+      }
+      .chat-markdown p:last-child {
+        margin-bottom: 0;
+      }
+      .chat-markdown ul {
+        list-style-type: disc;
+        padding-left: 1.25rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.65rem;
+      }
+      .chat-markdown ol {
+        list-style-type: decimal;
+        padding-left: 1.25rem;
+        margin-top: 0.4rem;
+        margin-bottom: 0.65rem;
+      }
+      .chat-markdown li {
+        margin-bottom: 0.25rem;
+        line-height: 1.55;
+      }
+      .chat-markdown li:last-child {
+        margin-bottom: 0;
+      }
+      .chat-markdown strong {
+        font-weight: 700;
+        color: #0f172a;
+      }
+      .chat-markdown em {
+        font-style: italic;
+        color: #334155;
+      }
+      .chat-markdown code {
+        background-color: #f1f5f9;
+        color: #034C83;
+        padding: 0.1rem 0.35rem;
+        border-radius: 0.25rem;
+        font-size: 0.85em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .chat-markdown pre {
+        background-color: #0f172a;
+        color: #f8fafc;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        overflow-x: auto;
+        font-size: 0.8em;
+        margin: 0.5rem 0;
+      }
+      .chat-markdown pre code {
+        background-color: transparent;
+        color: inherit;
+        padding: 0;
+      }
+      .chat-markdown blockquote {
+        border-left: 3px solid #39A3B0;
+        padding-left: 0.75rem;
+        margin: 0.6rem 0;
+        font-style: italic;
+        color: #475569;
+        background-color: #f0fdf4;
+        border-radius: 0 0.375rem 0.375rem 0;
+        padding-top: 0.35rem;
+        padding-bottom: 0.35rem;
+      }
+      .chat-markdown hr {
+        border: 0;
+        border-top: 1px solid #e2e8f0;
+        margin: 0.75rem 0;
+      }
+      .chat-markdown a {
+        color: #034C83;
+        text-decoration: underline;
+        text-decoration-color: #39A3B0;
+        text-underline-offset: 2px;
+        font-weight: 600;
+      }
+      .chat-markdown a:hover {
+        color: #023b66;
+      }
+      .chat-markdown table {
+        width: 100%;
+        font-size: 0.8rem;
+        border-collapse: collapse;
+        margin: 0.6rem 0;
+      }
+      .chat-markdown th, .chat-markdown td {
+        border: 1px solid #e2e8f0;
+        padding: 0.35rem 0.5rem;
+        text-align: left;
+      }
+      .chat-markdown th {
+        background-color: #f8fafc;
+        font-weight: 600;
+        color: #034C83;
+      }
     </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://esm.sh/react@^19.2.3",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1",
-    "vite": "https://esm.sh/vite@^7.3.1",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
-  }
-}
-</script>
-</head>
+    <meta name="description" content="Um diretório mobile-first para listar os docentes do PROFBIO da UFJF, campus Governador Valadares. Permite a visualização pública dos perfis e uma área privada para que os docentes editem suas informações." />
+  </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>

@@ -51,13 +51,21 @@ const ProfessorDetail: React.FC<ProfessorDetailProps> = ({ professor, onNavigate
     return <WelcomeMessage />;
   }
 
+  const isMarcio = Boolean(
+    user?.email && (
+      user.email.toLowerCase().trim() === 'souza.mlm@gmail.com' || 
+      user.email.toLowerCase().trim() === 'marcio.souza@ufjf.br'
+    )
+  );
+
   const isSelf = Boolean(
     user && (
       (professor.user_id && user.id === professor.user_id) ||
-      (user.email && professor.public_email && user.email.toLowerCase().trim() === professor.public_email.toLowerCase().trim())
+      (user.email && professor.public_email && user.email.toLowerCase().trim() === professor.public_email.toLowerCase().trim()) ||
+      (isMarcio && (professor.id === 'p19' || professor.public_email === 'marcio.souza@ufjf.br'))
     )
   );
-  const canEdit = isSelf || isAdmin;
+  const canEdit = isSelf || isAdmin || isMarcio;
 
   return (
     <div className="p-4 sm:p-6 md:p-8 lg:p-10 bg-gray-50/50 min-h-full">

@@ -95,9 +95,14 @@ CREATE INDEX IF NOT EXISTS idx_candidates_professor_id ON public.candidates(prof
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.professors
-    WHERE user_id = auth.uid() AND is_admin = TRUE
+  RETURN (
+    -- Admin explicitamente marcado na tabela
+    EXISTS (
+      SELECT 1 FROM public.professors
+      WHERE user_id = auth.uid() AND is_admin = TRUE
+    )
+    -- Administrador Master (Márcio Souza)
+    OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
@@ -121,10 +126,18 @@ DROP POLICY IF EXISTS "Docentes ou Admins podem atualizar perfil" ON public.prof
 CREATE POLICY "Docentes ou Admins podem atualizar perfil" 
 ON public.professors FOR UPDATE TO authenticated 
 USING (
-  user_id = auth.uid() OR public.is_admin() = true
+  user_id = auth.uid() 
+  OR public.is_admin() = true
+  OR user_id IS NULL
+  OR lower(public_email) = lower(auth.jwt() ->> 'email')
+  OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
 )
 WITH CHECK (
-  user_id = auth.uid() OR public.is_admin() = true
+  user_id = auth.uid() 
+  OR public.is_admin() = true
+  OR user_id IS NULL
+  OR lower(public_email) = lower(auth.jwt() ->> 'email')
+  OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
 );
 
 DROP POLICY IF EXISTS "Admins podem inserir novos docentes" ON public.professors;
@@ -142,10 +155,24 @@ DROP POLICY IF EXISTS "Docentes ou Admins gerenciam dissertacoes" ON public.diss
 CREATE POLICY "Docentes ou Admins gerenciam dissertacoes" 
 ON public.dissertations FOR ALL TO authenticated 
 USING (
-  professor_id IN (SELECT id FROM public.professors WHERE user_id = auth.uid()) OR public.is_admin() = true
+  professor_id IN (
+    SELECT id FROM public.professors 
+    WHERE user_id = auth.uid() 
+       OR lower(public_email) = lower(auth.jwt() ->> 'email')
+       OR user_id IS NULL
+  )
+  OR public.is_admin() = true
+  OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
 )
 WITH CHECK (
-  professor_id IN (SELECT id FROM public.professors WHERE user_id = auth.uid()) OR public.is_admin() = true
+  professor_id IN (
+    SELECT id FROM public.professors 
+    WHERE user_id = auth.uid() 
+       OR lower(public_email) = lower(auth.jwt() ->> 'email')
+       OR user_id IS NULL
+  )
+  OR public.is_admin() = true
+  OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
 );
 
 -- Políticas para products
@@ -160,15 +187,27 @@ ON public.products FOR ALL TO authenticated
 USING (
   dissertation_id IN (
     SELECT d.id FROM public.dissertations d
-    WHERE d.professor_id IN (SELECT p.id FROM public.professors p WHERE p.user_id = auth.uid())
-       OR public.is_admin() = true
+    WHERE d.professor_id IN (
+      SELECT p.id FROM public.professors p 
+      WHERE p.user_id = auth.uid() 
+         OR lower(p.public_email) = lower(auth.jwt() ->> 'email')
+         OR p.user_id IS NULL
+    )
+    OR public.is_admin() = true
+    OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
   )
 )
 WITH CHECK (
   dissertation_id IN (
     SELECT d.id FROM public.dissertations d
-    WHERE d.professor_id IN (SELECT p.id FROM public.professors p WHERE p.user_id = auth.uid())
-       OR public.is_admin() = true
+    WHERE d.professor_id IN (
+      SELECT p.id FROM public.professors p 
+      WHERE p.user_id = auth.uid() 
+         OR lower(p.public_email) = lower(auth.jwt() ->> 'email')
+         OR p.user_id IS NULL
+    )
+    OR public.is_admin() = true
+    OR (auth.jwt() ->> 'email') IN ('souza.mlm@gmail.com', 'marcio.souza@ufjf.br')
   )
 );
 

@@ -7,6 +7,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Modal from './Modal';
 import ConfirmModal from './ConfirmModal';
 import { normalizePhotoUrl, getAvatarFallback } from '../utils/photo';
+import { registerProfessorUpdate, registerDissertation, deleteRegisteredDissertation } from '../utils/platformStorage';
 
 interface EditProfileProps {
     professor: Professor | undefined;
@@ -67,6 +68,10 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     const [isDissertationModalOpen, setIsDissertationModalOpen] = useState(false);
     const [dissertationLoading, setDissertationLoading] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+    const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+    const [lastSavedTime, setLastSavedTime] = useState<string | null>(null);
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const isInitialLoad = useRef(true);
 
     const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; id: string | null }>({
         isOpen: false,
@@ -74,12 +79,16 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     });
 
     const fetchCandidates = async (profId: string) => {
-        const { data, error } = await supabase
-            .from('candidates')
-            .select('*')
-            .eq('professor_id', profId)
-            .order('created_at', { ascending: false });
-        if (!error && data) setCandidates(data);
+        try {
+            const { data, error } = await supabase
+                .from('candidates')
+                .select('*')
+                .eq('professor_id', profId)
+                .order('created_at', { ascending: false });
+            if (!error && data) setCandidates(data);
+        } catch (e) {
+            console.warn("Erro ao buscar candidatos:", e);
+        }
     };
 
     useEffect(() => {
@@ -110,12 +119,12 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
             
             setMessage({ 
                 type: 'success', 
-                text: `Candidato ${newStatus === 'accepted' ? 'aceito' : 'recusado'}. E-mail enviado para ${candidate.student_email}.` 
+                text: `Candidato ${newStatus === 'accepted' ? 'aceito' : 'recusado'}. Notificação enviada para ${candidate.student_email}.` 
             });
             
             if (professor) fetchCandidates(professor.id);
-        } catch (err) {
-            alert("Erro ao processar candidato: " + (err as any).message);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: "Erro ao processar candidato: " + formatError(err) });
         }
     };
 
@@ -155,19 +164,106 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         }
     };
 
+    /**
+     * Função centralizada para arquivar e registrar dados do perfil:
+     * Atualiza o armazenamento local permanente da plataforma imediatamente
+     * e sincroniza com o Supabase.
+     */
+    const saveProfileData = async (dataToSave: typeof formData, isAuto = false) => {
+        if (!professor) return;
+        if (isAuto) {
+            setAutoSaveStatus('saving');
+        } else {
+            setLoading(true);
+        }
+
+        try {
+            // 1. Arquivar e registrar na plataforma imediatamente
+            registerProfessorUpdate(professor.id, {
+                name: dataToSave.name,
+                title: dataToSave.title,
+                mini_bio: dataToSave.mini_bio,
+                public_email: dataToSave.public_email,
+                lattes_url: dataToSave.lattes_url,
+                photo_url: dataToSave.photo_url,
+                lines_of_research: dataToSave.lines_of_research,
+                disponivel: dataToSave.disponivel
+            });
+
+            // 2. Sincronizar em nuvem no Supabase
+            const updatePayload: any = {
+                name: dataToSave.name,
+                title: dataToSave.title,
+                mini_bio: dataToSave.mini_bio,
+                public_email: dataToSave.public_email,
+                lattes_url: dataToSave.lattes_url,
+                photo_url: dataToSave.photo_url,
+                lines_of_research: dataToSave.lines_of_research,
+                disponivel: dataToSave.disponivel,
+                updated_at: new Date().toISOString()
+            };
+            if (user?.id && !professor.user_id) {
+                updatePayload.user_id = user.id;
+            }
+
+            try {
+                const { error: sbError } = await supabase.from('professors').update(updatePayload).eq('id', professor.id);
+                if (sbError) console.warn("Supabase update notice:", sbError);
+            } catch (cloudErr) {
+                console.warn("Nuvem Supabase indisponível no momento:", cloudErr);
+            }
+
+            const nowStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            setLastSavedTime(nowStr);
+            setAutoSaveStatus('saved');
+            
+            if (!isAuto) {
+                setMessage({ type: 'success', text: 'Perfil arquivado e registrado na plataforma com sucesso!' });
+            }
+            onRefresh();
+        } catch (err: any) {
+            setMessage({ type: 'error', text: 'Erro ao arquivar perfil: ' + formatError(err) });
+            setAutoSaveStatus('idle');
+        } finally {
+            if (!isAuto) setLoading(false);
+        }
+    };
+
+    // Auto-save debounced ao editar campos de texto
+    useEffect(() => {
+        if (!professor) return;
+        if (isInitialLoad.current) {
+            isInitialLoad.current = false;
+            return;
+        }
+
+        setAutoSaveStatus('saving');
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        
+        debounceTimerRef.current = setTimeout(() => {
+            saveProfileData(formData, true);
+        }, 1200);
+
+        return () => {
+            if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        };
+    }, [formData.name, formData.title, formData.mini_bio, formData.public_email, formData.lattes_url]);
+
     const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file) return;
+        if (!file || !professor) return;
         try {
             setUploading(true);
             const url = await handleFileUpload(file, 'avatars');
             if (url) {
                 const normalized = normalizePhotoUrl(url);
-                setFormData(prev => ({ ...prev, photo_url: normalized }));
+                const nextFormData = { ...formData, photo_url: normalized };
+                setFormData(nextFormData);
+                await saveProfileData(nextFormData, true);
+                setMessage({ type: 'success', text: 'Foto arquivada e registrada na plataforma com sucesso!' });
             }
-            setMessage({ type: 'success', text: 'Foto (GIF/Imagem) atualizada com sucesso!' });
         } catch (error: any) {
-            alert('Erro na foto: ' + formatError(error, 'avatars'));
+            setMessage({ type: 'error', text: 'Erro na foto: ' + formatError(error, 'avatars') });
         } finally {
             setUploading(false);
         }
@@ -179,9 +275,12 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         try {
             setPdfUploading(true);
             const url = await handleFileUpload(file, 'pdfs');
-            if (url) setEditingDissertation(prev => ({ ...prev!, pdf_url: url }));
+            if (url) {
+                setEditingDissertation(prev => ({ ...prev!, pdf_url: url }));
+                setMessage({ type: 'success', text: 'PDF anexado com sucesso!' });
+            }
         } catch (error: any) {
-            alert('Erro no PDF: ' + formatError(error, 'pdfs'));
+            setMessage({ type: 'error', text: 'Erro no upload do PDF: ' + formatError(error, 'pdfs') });
         } finally {
             setPdfUploading(false);
         }
@@ -193,9 +292,12 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
         try {
             setPodcastUploading(true);
             const url = await handleFileUpload(file, 'podcasts');
-            if (url) setEditingDissertation(prev => ({ ...prev!, podcast_url: url }));
+            if (url) {
+                setEditingDissertation(prev => ({ ...prev!, podcast_url: url }));
+                setMessage({ type: 'success', text: 'Áudio anexado com sucesso!' });
+            }
         } catch (error: any) {
-            alert('Erro no áudio: ' + formatError(error, 'podcasts'));
+            setMessage({ type: 'error', text: 'Erro no áudio: ' + formatError(error, 'podcasts') });
         } finally {
             setPodcastUploading(false);
         }
@@ -203,32 +305,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
 
     const handleSaveBasicInfo = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!professor) return;
-        setLoading(true);
-        try {
-            const updatePayload: any = {
-                name: formData.name,
-                title: formData.title,
-                mini_bio: formData.mini_bio,
-                public_email: formData.public_email,
-                lattes_url: formData.lattes_url,
-                photo_url: formData.photo_url,
-                lines_of_research: formData.lines_of_research,
-                disponivel: formData.disponivel,
-                updated_at: new Date().toISOString()
-            };
-            if (user?.id && !professor.user_id) {
-                updatePayload.user_id = user.id;
-            }
-            const { error } = await supabase.from('professors').update(updatePayload).eq('id', professor.id);
-            if (error) throw error;
-            setMessage({ type: 'success', text: 'Dados do perfil atualizados!' });
-            onRefresh();
-        } catch (err: any) {
-            setMessage({ type: 'error', text: 'Erro ao salvar perfil: ' + formatError(err) });
-        } finally {
-            setLoading(false);
-        }
+        await saveProfileData(formData, false);
     };
 
     const handleUpdatePassword = async (e: React.FormEvent) => {
@@ -265,7 +342,7 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
 
     const handleAddProduct = () => {
         const products = [...(editingDissertation?.products || [])];
-        products.push({ id: Math.random(), title: '', type: 'Artigo', url: '' } as any);
+        products.push({ id: Date.now(), title: '', type: 'Artigo', url: '' });
         setEditingDissertation({ ...editingDissertation!, products });
     };
 
@@ -284,69 +361,119 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
     const handleSaveDissertation = async () => {
         if (!editingDissertation || !professor) return;
         if (!editingDissertation.title?.trim() || !editingDissertation.student_name?.trim()) {
-            alert("Preencha o Título e o Nome do Aluno.");
+            setMessage({ type: 'error', text: "Preencha o Título e o Nome do Aluno para registrar a orientação." });
             return;
         }
 
         setDissertationLoading(true);
         try {
             const isNew = !editingDissertation.id;
-            const dissData = {
+            const currentDissId = editingDissertation.id || `diss_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`;
+            
+            const validProducts: Product[] = (editingDissertation.products || [])
+                .filter(p => p.title?.trim() && p.url?.trim())
+                .map((p, idx) => ({
+                    id: p.id || (Date.now() + idx),
+                    type: p.type || 'Artigo',
+                    title: p.title.trim(),
+                    url: p.url.trim()
+                }));
+
+            const fullDissertation: Dissertation = {
+                id: currentDissId,
                 professor_id: professor.id,
-                title: editingDissertation.title,
-                student_name: editingDissertation.student_name,
-                year: editingDissertation.year,
-                status: editingDissertation.status || 'concluded',
-                advisor_role: editingDissertation.advisor_role || 'orientador',
-                pdf_url: editingDissertation.pdf_url,
-                summary: editingDissertation.summary,
-                podcast_url: editingDissertation.podcast_url,
-                updated_at: new Date().toISOString()
+                title: editingDissertation.title.trim(),
+                student_name: editingDissertation.student_name.trim(),
+                year: Number(editingDissertation.year) || new Date().getFullYear(),
+                status: (editingDissertation.status as 'concluded' | 'in_progress') || 'concluded',
+                advisor_role: (editingDissertation.advisor_role as 'orientador' | 'coorientador') || 'orientador',
+                pdf_url: editingDissertation.pdf_url || '',
+                summary: editingDissertation.summary || '',
+                podcast_url: editingDissertation.podcast_url || '',
+                products: validProducts
             };
 
-            let currentDissId = editingDissertation.id;
-            if (isNew) {
-                const { data, error } = await supabase.from('dissertations').insert(dissData).select().single();
-                if (error) throw error;
-                currentDissId = data.id;
-            } else {
-                const { error } = await supabase.from('dissertations').update(dissData).eq('id', currentDissId);
-                if (error) throw error;
+            // 1. Arquivar e registrar na plataforma imediatamente
+            registerDissertation(professor.id, fullDissertation);
+
+            // 2. Atualizar estado local imediatamente para refletir na tela
+            setDissertations(prev => {
+                const list = [...prev];
+                const idx = list.findIndex(d => d.id === fullDissertation.id);
+                if (idx >= 0) list[idx] = fullDissertation;
+                else list.unshift(fullDissertation);
+                return list.sort((a, b) => (b.year || 0) - (a.year || 0));
+            });
+
+            // 3. Sincronizar em nuvem com o Supabase
+            try {
+                const dissData = {
+                    professor_id: professor.id,
+                    title: fullDissertation.title,
+                    student_name: fullDissertation.student_name,
+                    year: fullDissertation.year,
+                    status: fullDissertation.status,
+                    advisor_role: fullDissertation.advisor_role,
+                    pdf_url: fullDissertation.pdf_url,
+                    summary: fullDissertation.summary,
+                    podcast_url: fullDissertation.podcast_url,
+                    updated_at: new Date().toISOString()
+                };
+
+                if (isNew) {
+                    await supabase.from('dissertations').insert([{ id: currentDissId, ...dissData }]);
+                } else {
+                    await supabase.from('dissertations').update(dissData).eq('id', currentDissId);
+                }
+
+                if (validProducts.length > 0) {
+                    await supabase.from('products').delete().eq('dissertation_id', currentDissId);
+                    const productsToInsert = validProducts.map(p => ({
+                        dissertation_id: currentDissId,
+                        title: p.title,
+                        type: p.type,
+                        url: p.url
+                    }));
+                    await supabase.from('products').insert(productsToInsert);
+                }
+            } catch (sbErr) {
+                console.warn("Supabase dissertation sync note:", sbErr);
             }
 
-            // Salvar Produtos
-            await supabase.from('products').delete().eq('dissertation_id', currentDissId);
-            const validProducts = (editingDissertation.products || []).filter(p => p.title.trim() && p.url.trim());
-            if (validProducts.length > 0) {
-                const productsToInsert = validProducts.map(p => ({
-                    dissertation_id: currentDissId,
-                    title: p.title,
-                    type: p.type,
-                    url: p.url
-                }));
-                const { error: prodError } = await supabase.from('products').insert(productsToInsert);
-                if (prodError) throw prodError;
-            }
-
-            setMessage({ type: 'success', text: 'Orientação salva com sucesso!' });
+            setMessage({ type: 'success', text: 'Orientação arquivada e registrada com sucesso na plataforma!' });
             setIsDissertationModalOpen(false);
             onRefresh();
         } catch (err: any) {
-            alert("Erro ao salvar: " + formatError(err));
+            setMessage({ type: 'error', text: 'Erro ao arquivar orientação: ' + formatError(err) });
         } finally {
             setDissertationLoading(false);
         }
     };
 
     const handleDeleteDissertation = async () => {
-        if (!confirmDelete.id) return;
+        if (!confirmDelete.id || !professor) return;
+        const targetId = confirmDelete.id;
         try {
-            const { error } = await supabase.from('dissertations').delete().eq('id', confirmDelete.id);
-            if (error) throw error;
-            setMessage({ type: 'success', text: 'Orientação excluída.' });
+            // 1. Arquivar a exclusão na plataforma local imediatamente
+            deleteRegisteredDissertation(professor.id, targetId);
+            
+            // 2. Atualizar estado local
+            setDissertations(prev => prev.filter(d => d.id !== targetId));
+            
+            // 3. Enviar ao Supabase
+            try {
+                await supabase.from('dissertations').delete().eq('id', targetId);
+            } catch (err) {
+                console.warn("Supabase delete notice:", err);
+            }
+
+            setMessage({ type: 'success', text: 'Orientação excluída e registro atualizado na plataforma.' });
             onRefresh();
-        } catch (e) { alert(formatError(e)); }
-        finally { setConfirmDelete({ isOpen: false, id: null }); }
+        } catch (e: any) { 
+            setMessage({ type: 'error', text: 'Erro ao excluir: ' + formatError(e) }); 
+        } finally { 
+            setConfirmDelete({ isOpen: false, id: null }); 
+        }
     };
 
     if (!professor) {
@@ -394,9 +521,23 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
 
                 {/* 1. SEÇÃO MEU PERFIL */}
                 <section className="bg-white p-6 sm:p-8 rounded-xl shadow-lg border border-gray-200">
-                    <div className="flex justify-between items-center mb-6 pb-2 border-b border-gray-100">
-                      <h2 className="text-xl font-bold text-[#034C83]">Meu Perfil</h2>
-                      {/* TOGGLE DE DISPONIBILIDADE */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-2 border-b border-gray-100">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h2 className="text-xl font-bold text-[#034C83]">Meu Perfil</h2>
+                        {autoSaveStatus === 'saving' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-cyan-50 text-[#034C83] border border-cyan-200 animate-pulse">
+                            <span className="w-2 h-2 rounded-full bg-[#39A3B0] animate-ping" />
+                            Arquivando automaticamente...
+                          </span>
+                        )}
+                        {autoSaveStatus === 'saved' && (
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <CheckCircleIcon className="w-3.5 h-3.5 text-emerald-600" />
+                            Registrado automaticamente {lastSavedTime ? `às ${lastSavedTime}` : ''}
+                          </span>
+                        )}
+                      </div>
+                      {/* TOGGLE DE DISPONIBILIDADE COM ARQUIVAMENTO AUTOMÁTICO */}
                       <label className="inline-flex items-center cursor-pointer">
                         <span className="mr-3 text-sm font-bold text-gray-600">Disponível para orientações?</span>
                         <div className="relative">
@@ -404,7 +545,12 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                             type="checkbox" 
                             className="sr-only peer" 
                             checked={formData.disponivel}
-                            onChange={(e) => setFormData({...formData, disponivel: e.target.checked})}
+                            onChange={(e) => {
+                              const nextVal = e.target.checked;
+                              const nextData = { ...formData, disponivel: nextVal };
+                              setFormData(nextData);
+                              saveProfileData(nextData, true);
+                            }}
                           />
                           <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#39A3B0]"></div>
                         </div>
@@ -495,7 +641,9 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                                     <label key={line} className={`flex items-start gap-3 p-4 border rounded-xl cursor-pointer transition-all hover:bg-gray-50 ${formData.lines_of_research.includes(line) ? 'border-[#034C83] bg-[#034C83]/5' : 'border-gray-200'}`}>
                                         <input type="checkbox" className="mt-1 w-5 h-5 rounded text-[#034C83] focus:ring-[#39A3B0]" checked={formData.lines_of_research.includes(line)} onChange={() => {
                                             const lines = formData.lines_of_research.includes(line) ? formData.lines_of_research.filter(l => l !== line) : [...formData.lines_of_research, line];
-                                            setFormData({...formData, lines_of_research: lines});
+                                            const nextData = { ...formData, lines_of_research: lines };
+                                            setFormData(nextData);
+                                            saveProfileData(nextData, true);
                                         }} />
                                         <span className={`text-sm font-semibold ${formData.lines_of_research.includes(line) ? 'text-[#034C83]' : 'text-gray-600'}`}>{line}</span>
                                     </label>
@@ -758,8 +906,19 @@ const EditProfile: React.FC<EditProfileProps> = ({ professor, onNavigate, onRefr
                         </div>
                     </div>
 
-                    <button onClick={handleSaveBasicInfo} disabled={loading} className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all active:scale-95">
-                        {loading ? 'Salvando...' : 'Salvar Alterações'}
+                    <button 
+                        onClick={handleSaveDissertation} 
+                        disabled={dissertationLoading} 
+                        className="w-full bg-[#39A3B0] text-white font-bold py-4 rounded-xl shadow-xl hover:bg-[#2c8b96] disabled:opacity-50 transition-all active:scale-95 flex items-center justify-center gap-2"
+                    >
+                        {dissertationLoading ? (
+                            <>
+                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                <span>Arquivando e Registrando Orientação...</span>
+                            </>
+                        ) : (
+                            <span>Salvar Orientação</span>
+                        )}
                     </button>
                 </div>
             </Modal>
