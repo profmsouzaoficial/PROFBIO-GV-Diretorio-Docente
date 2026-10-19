@@ -66,3 +66,21 @@ export interface Professor {
 
 export type AuthSession = Session;
 export type AuthUser = User;
+
+export interface ChatReference {
+  titulo: string;
+  link: string;
+}
+
+export interface ChatResponseJson {
+  texto_resposta: string;
+  referencias?: ChatReference[];
+}
+
+export interface PerguntaFrequente {
+  id?: string | number;
+  pergunta: string;
+  resposta: ChatResponseJson | string;
+  frequencia: number;
+  created_at?: string;
+}

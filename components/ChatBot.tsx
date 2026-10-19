@@ -2,11 +2,15 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { SendIcon, XIcon, SparklesIcon, FileTextIcon, ExternalLinkIcon, ChevronDownIcon } from './icons';
 import { supabase } from '../supabaseClient';
 import { marked } from 'marked';
-
-interface ChatReference {
-  titulo: string;
-  link: string;
-}
+import { 
+  fetchFaqsFromSupabase, 
+  selectTop5WithTies, 
+  findBestMatchingFaq, 
+  incrementFaqFrequency, 
+  saveNewFaq, 
+  parseFaqResponse 
+} from '../utils/faqService';
+import type { PerguntaFrequente, ChatReference } from '../types';
 
 interface Message {
   id: string;
@@ -17,13 +21,6 @@ interface Message {
   timestamp: Date;
   isTyping?: boolean;
 }
-
-const QUICK_QUESTIONS = [
-  "Qual o prazo máximo para conclusão do mestrado?",
-  "Como solicitar prorrogação de prazo?",
-  "Quais são as regras para bolsa CAPES?",
-  "Qual a frequência mínima obrigatória nas disciplinas?"
-];
 
 // Imagem fixa da Fachada da Secretaria Virtual solicitada para o cabeçalho
 const HEADER_BANNER_URL = "https://zvrrrakybjzelyavrqhc.supabase.co/storage/v1/object/public/secretaria_virtual/faxada-secretaria-virtual.jpeg";
@@ -132,10 +129,37 @@ const ChatBot: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [openReferencesFor, setOpenReferencesFor] = useState<{ [msgId: string]: boolean }>({});
 
+  // Estados das perguntas frequentes (FAQs do Supabase)
+  const [allFaqs, setAllFaqs] = useState<PerguntaFrequente[]>([]);
+  const [displayedFaqs, setDisplayedFaqs] = useState<PerguntaFrequente[]>([]);
+  const [isFaqLoading, setIsFaqLoading] = useState(false);
+
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const typingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Carrega as perguntas frequentes do Supabase e sorteia as 5 iniciais
+  useEffect(() => {
+    let isMounted = true;
+    setIsFaqLoading(true);
+    fetchFaqsFromSupabase()
+      .then((faqs) => {
+        if (!isMounted) return;
+        setAllFaqs(faqs);
+        setDisplayedFaqs(selectTop5WithTies(faqs));
+      })
+      .catch((err) => {
+        console.warn('Erro ao inicializar perguntas frequentes:', err);
+      })
+      .finally(() => {
+        if (isMounted) setIsFaqLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   // Tentativa de carregar dinamicamente a lista de avatares caso o bucket tenha novas imagens ou RLS SELECT habilitado
   useEffect(() => {
@@ -187,9 +211,19 @@ const ChatBot: React.FC = () => {
   }, []);
 
   // Ao abrir o chatbot, garante que a barra de rolagem fique no início para leitura
+  // e recarrega as perguntas frequentes mais atualizadas diretamente do Supabase
   useEffect(() => {
     if (isOpen) {
       setShowBadge(false);
+      
+      // Busca atualizada em tempo real da tabela perguntas_frequentes
+      fetchFaqsFromSupabase()
+        .then((faqs) => {
+          setAllFaqs(faqs);
+          setDisplayedFaqs(selectTop5WithTies(faqs));
+        })
+        .catch(err => console.warn('Erro ao atualizar FAQs ao abrir:', err));
+
       if (chatContainerRef.current) {
         chatContainerRef.current.scrollTop = 0;
       }
@@ -262,6 +296,62 @@ const ChatBot: React.FC = () => {
     }, intervalMs);
   };
 
+  // Sorteia novamente 5 perguntas entre as empatadas
+  const handleRerollFaqs = () => {
+    fetchFaqsFromSupabase()
+      .then((faqs) => {
+        setAllFaqs(faqs);
+        setDisplayedFaqs(selectTop5WithTies(faqs));
+      })
+      .catch(() => {
+        if (allFaqs.length > 0) {
+          setDisplayedFaqs(selectTop5WithTies(allFaqs));
+        }
+      });
+  };
+
+  // REQUISITO 2: Quando o usuário clica em uma das perguntas frequentes:
+  // - Mostra a respectiva resposta presente na coluna 'resposta' (JSON)
+  // - Incrementa a coluna 'frequencia' da respectiva pergunta no Supabase (+1)
+  const handleFaqClick = async (faq: PerguntaFrequente) => {
+    if (isLoading || isTyping) return;
+
+    if (typingTimerRef.current) {
+      clearInterval(typingTimerRef.current);
+      typingTimerRef.current = null;
+      setMessages(prev => prev.map(m => m.isTyping ? { ...m, isTyping: false } : m));
+      setIsTyping(false);
+    }
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      sender: 'user',
+      text: faq.pergunta,
+      timestamp: new Date()
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputText('');
+
+    setTimeout(() => {
+      scrollToBottom();
+    }, 50);
+
+    // 1. Incrementa a coluna 'frequencia' no banco e na memória
+    incrementFaqFrequency(faq);
+    setAllFaqs(prev =>
+      prev.map(item =>
+        item.id === faq.id || item.pergunta === faq.pergunta
+          ? { ...item, frequencia: (Number(item.frequencia) || 1) + 1 }
+          : item
+      )
+    );
+
+    // 2. Extrai e exibe a resposta formatada com digitação suave
+    const parsed = parseFaqResponse(faq.resposta);
+    startTypewriter(parsed.texto_resposta, parsed.referencias);
+  };
+
   const handleSendMessage = async (textToSend?: string) => {
     const text = (textToSend || inputText).trim();
     if (!text || isLoading || isTyping) return;
@@ -282,12 +372,35 @@ const ChatBot: React.FC = () => {
 
     setMessages(prev => [...prev, userMessage]);
     setInputText('');
-    setIsLoading(true);
 
     // Rola suavemente para baixo para mostrar a mensagem do usuário e o loader
     setTimeout(() => {
       scrollToBottom();
     }, 50);
+
+    // REQUISITO 3: Comparação semântica com a lista da coluna 'pergunta'.
+    // Caso a pergunta do usuário tenha similaridade >= 90% com alguma pergunta do banco,
+    // usa-se a respectiva resposta já existente no banco de dados, economizando tokens da API!
+    const match = findBestMatchingFaq(text, allFaqs, 0.90);
+
+    if (match) {
+      // Incrementa a coluna 'frequencia' da pergunta encontrada
+      incrementFaqFrequency(match.faq);
+      setAllFaqs(prev =>
+        prev.map(item =>
+          item.id === match.faq.id || item.pergunta === match.faq.pergunta
+            ? { ...item, frequencia: (Number(item.frequencia) || 1) + 1 }
+            : item
+        )
+      );
+
+      const parsed = parseFaqResponse(match.faq.resposta);
+      startTypewriter(parsed.texto_resposta, parsed.referencias);
+      return;
+    }
+
+    // Se similaridade semântica for menor que 90%, consulta a API DeepSeek normalmente
+    setIsLoading(true);
 
     try {
       const response = await fetch('https://chatprofbio.sparklingtech.com.br/chat', {
@@ -309,6 +422,20 @@ const ChatBot: React.FC = () => {
 
       // Inicia o efeito de digitação nítido e fluido
       startTypewriter(fullAnswer, refs);
+
+      // REQUISITO 4: A tabela 'perguntas_frequentes' é acrescentada com as novas perguntas.
+      // Cria uma chamada a DeepSeek para registrar uma versão enxuta e culta da pergunta original,
+      // define 1 na coluna 'frequencia' e salva o JSON na coluna 'resposta'.
+      saveNewFaq(text, { texto_resposta: fullAnswer, referencias: refs }, allFaqs)
+        .then(newFaq => {
+          if (newFaq) {
+            setAllFaqs(prev => [newFaq, ...prev.filter(f => f.id !== newFaq.id)]);
+          }
+        })
+        .catch(err => {
+          console.warn('Aviso ao registrar nova pergunta frequente no Supabase:', err);
+        });
+
     } catch (err: any) {
       console.error('Erro na API de Chat:', err);
       const errorMessage: Message = {
@@ -346,6 +473,10 @@ const ChatBot: React.FC = () => {
     ]);
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = 0;
+    }
+    // Sorteia novamente entre as perguntas empatadas para renovar as 5 opções exibidas
+    if (allFaqs.length > 0) {
+      setDisplayedFaqs(selectTop5WithTies(allFaqs));
     }
   };
 
@@ -547,21 +678,39 @@ const ChatBot: React.FC = () => {
               </div>
             ))}
 
-            {/* Quick questions pills (mostradas após mensagem inicial quando não está digitando) */}
-            {messages.length === 1 && !isLoading && !isTyping && (
-              <div className="pt-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-                  Dúvidas Frequentes:
-                </p>
-                <div className="flex flex-col gap-1.5">
-                  {QUICK_QUESTIONS.map((question, idx) => (
+            {/* Dúvidas Frequentes: 5 perguntas sorteadas com base na frequência e empates */}
+            {messages.length === 1 && !isLoading && !isTyping && displayedFaqs.length > 0 && (
+              <div className="pt-2 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between mb-2 px-0.5">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                    <SparklesIcon className="w-3.5 h-3.5 text-[#39A3B0]" />
+                    Dúvidas Frequentes:
+                  </p>
+                  {allFaqs.length > 5 && (
                     <button
-                      key={idx}
-                      onClick={() => handleSendMessage(question)}
-                      className="text-left text-xs bg-white hover:bg-gray-100 text-[#034C83] hover:text-[#023b66] border border-gray-200 rounded-xl px-3 py-2 font-medium transition-all shadow-xs flex items-center justify-between group"
+                      type="button"
+                      onClick={handleRerollFaqs}
+                      title="Sortear outras 5 perguntas entre as empatadas"
+                      className="text-[11px] text-[#034C83] hover:text-[#39A3B0] font-medium flex items-center gap-1 transition-colors px-1 py-0.5 rounded hover:bg-blue-50/60"
                     >
-                      <span>{question}</span>
-                      <span className="text-[#39A3B0] opacity-0 group-hover:opacity-100 transition-opacity">→</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                        <path d="M3 3v5h5" />
+                      </svg>
+                      <span>Sortear</span>
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  {displayedFaqs.map((faq, idx) => (
+                    <button
+                      key={faq.id || `faq-${idx}`}
+                      type="button"
+                      onClick={() => handleFaqClick(faq)}
+                      className="text-left text-xs bg-white hover:bg-gray-100 text-[#034C83] hover:text-[#023b66] border border-gray-200 rounded-xl px-3 py-2.5 font-medium transition-all shadow-2xs hover:shadow-sm flex items-center justify-between group active:scale-[0.99]"
+                    >
+                      <span className="line-clamp-2 leading-relaxed">{faq.pergunta}</span>
+                      <span className="text-[#39A3B0] opacity-0 group-hover:opacity-100 transition-opacity ml-2 flex-shrink-0 font-bold">→</span>
                     </button>
                   ))}
                 </div>
